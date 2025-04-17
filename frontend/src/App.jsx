@@ -10,12 +10,13 @@ import Dashboard from './student/components/dashboard';
 import StudentDASHBOARD from './student/components/studentDASHBOARD';
 import ProfilePage from './student/components/profilepage';
 import BookCartPage from './student/components/bookcart';
+import SearchBook from './student/components/searchBook';
 
 function App() {
   return (
     <>
       {/* <AdminDashboard /> */}
-      <StudentDASHBOARD />
+      < SearchBook />
       {/* <Login /> */}
     </>
   );
