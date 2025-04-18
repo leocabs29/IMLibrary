@@ -9,7 +9,7 @@ import Signup from './student/components/signup';
 function App() {
   return (
     <>
-      <AdminDashboard/>
+      <Homepage/>
     </>
   );
 }
