@@ -143,7 +143,7 @@ function AdminDashboard() {
           {activeMenu === "View Borrowed" && <ViewBorrowedBooks />}
           {activeMenu === "Manage Users" && <ManageUsers />}
           {activeMenu === "Manage Books" && (
-            <ManageBooks
+            <ManageBooks 
             />
           )}
           {activeMenu === "Book Reservation Management" && <BookReservationManagement />}
