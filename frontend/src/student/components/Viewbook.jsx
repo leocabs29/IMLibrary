@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-// Note: Since we can't use MUI components directly, I'll recreate similar functionality
-// You'll need to replace the placeholder icons with your actual imports later
+import logo from '../../assets/logo.png'; // Assuming you have a logo image
+import { Link } from 'react-router-dom';
 export default function ViewBookPage() {
   const navigate = useNavigate();
   const [searchText, setSearchText] = useState('');
@@ -15,7 +14,7 @@ export default function ViewBookPage() {
       <header className="flex justify-between items-center bg-white p-4 shadow-md sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <img
-            src="/api/placeholder/60/60" // Replace with actual logo path
+            src={logo}// Replace with actual logo path
             alt="QCU Logo"
             className="w-12 h-12 cursor-pointer rounded-full"
             onClick={() => navigate('/landing')}
@@ -238,7 +237,79 @@ export default function ViewBookPage() {
           </div>
         </div>
       </main>
-
+                   {/* Student Dashboard Section */}
+          <div className="flex px-6 pb-6 gap-6">
+            {/* Left Sidebar */}
+            <div className="w-64">
+              <div className="bg-gray-50 p-4 rounded-md shadow-sm">
+                <h2 className="text-gray-800 font-bold mb-4 border-b pb-2">Student Menu</h2>
+                
+                <div className="flex flex-col gap-2">
+                  <button className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition font-medium">
+                    Your Borrowed Books
+                  </button>
+                  <Link to='/view-books' className="bg-white text-gray-700 p-2 border border-gray-300 rounded hover:bg-gray-50 transition">
+                    All Books
+                  </Link>
+                  <Link to='/profile' className="bg-white text-gray-700 p-2 border border-gray-300 rounded hover:bg-gray-50 transition">
+                    Your Profile
+                  </Link>
+                </div>
+              </div>
+            </div>
+            
+            {/* Main Content */}
+            <div className="flex-1 bg-white border border-gray-200 rounded-md shadow-sm">
+              <div className="bg-blue-500 p-3 text-center text-white font-medium">
+                Welcome to our Library, Marlits!
+              </div>
+              
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <p className="text-gray-700">
+                    You have borrowed <span className="font-bold text-blue-500">1</span> out of a maximum of <span className="font-bold">5</span> books.
+                  </p>
+                  
+                  <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="w-1/5 h-full bg-blue-500"></div>
+                  </div>
+                </div>
+                
+                <div className="mt-4">
+                  <div className="border-b border-gray-300 pb-2 mb-4">
+                    <h3 className="font-bold text-gray-800">Your Borrowed Books</h3>
+                  </div>
+                  
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-sm">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="border border-gray-300 p-2 text-left text-gray-700">Book Title</th>
+                          <th className="border border-gray-300 p-2 text-left text-gray-700">Author</th>
+                          <th className="border border-gray-300 p-2 text-left text-gray-700">Borrow Date</th>
+                          <th className="border border-gray-300 p-2 text-left text-gray-700">Return Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="border border-gray-300 p-2 text-gray-700">I miss you</td>
+                          <td className="border border-gray-300 p-2 text-gray-700">Earvin</td>
+                          <td className="border border-gray-300 p-2 text-gray-500">
+                            <div>2024-02-01</div>
+                            <div className="text-xs">17:58:52</div>
+                          </td>
+                          <td className="border border-gray-300 p-2 text-gray-500">
+                            <div>2024-07-01</div>
+                            <div className="text-xs">17:58:52</div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
       {/* Footer */}
       <footer className="bg-gray-800 text-white p-6">
         <div className="container mx-auto">

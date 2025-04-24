@@ -9,6 +9,7 @@ import ProfilePage from './student/components/profilepage';
 import BookCartPage from './student/components/bookcart';
 import SearchBook from './student/components/searchBook';
 import ViewBookPage from './student/components/Viewbook';
+import StudentDashboard from './student/components/StudentDashboard2';
 function App() {
   return (
     <Router>
@@ -23,6 +24,8 @@ function App() {
         <Route path="/cart" element={<BookCartPage />} />
         <Route path="/search" element={<SearchBook />} />
         <Route path="/view-books" element={<ViewBookPage />} />
+        <Route path="/student-dashboard2" element={<StudentDashboard/>} />
+
         
       </Routes>
     </Router>
