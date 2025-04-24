@@ -11,7 +11,6 @@ function StudentDashboard2() {
     "My Books",
     "Browse Catalog",
     "Reservations",
-    "Library Map",
     "Help & FAQs"
   ];
 
@@ -391,31 +390,6 @@ function StudentDashboard2() {
                     </tr>
                   </tbody>
                 </table>
-              </div>
-            </div>
-          )}
-
-          {activeMenu === "Library Map" && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">{activeCampus} Campus Map</h2>
-              <p className="text-gray-600 mb-6">Navigate the {activeCampus} Campus library facility.</p>
-              
-              <div className="h-96 bg-gray-100 rounded flex items-center justify-center">
-                <p className="text-gray-500">Interactive map of {activeCampus} Campus library would display here</p>
-              </div>
-              
-              <div className="mt-6">
-                <h3 className="text-lg font-medium mb-3">Library Hours</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-medium text-gray-700">Weekdays</h4>
-                    <p className="text-gray-600">7:00 AM - 10:00 PM</p>
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-gray-700">Weekends</h4>
-                    <p className="text-gray-600">9:00 AM - 8:00 PM</p>
-                  </div>
-                </div>
               </div>
             </div>
           )}
