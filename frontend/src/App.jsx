@@ -1,6 +1,4 @@
-import { useState } from 'react';
-import reactLogo from './assets/react.svg';
-import viteLogo from '/vite.svg';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import AdminDashboard from './admin/components/adminDashboard';
 import ViewBorrowedBooks from './admin/components/ViewBorrowedBooks';
 import Homepage from './student/components/homepage';
@@ -14,15 +12,20 @@ import SearchBook from './student/components/searchBook';
 
 function App() {
   return (
-    <>
-<<<<<<< HEAD
-      <Homepage/>
-=======
-      {/* <AdminDashboard /> */}
-      < SearchBook />
-      {/* <Login /> */}
->>>>>>> 3ae7756f665b652761174d3bab88d678b9523e31
-    </>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Homepage />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin-borrowed-books" element={<ViewBorrowedBooks />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/student-dashboard" element={<StudentDASHBOARD />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/cart" element={<BookCartPage />} />
+        <Route path="/search" element={<SearchBook />} />
+      </Routes>
+    </Router>
   );
 }
 
