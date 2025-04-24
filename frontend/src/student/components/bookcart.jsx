@@ -1,14 +1,13 @@
+import logo from '../../assets/logo.png'; // Adjust the path as necessary
 export default function BookCartPage() {
     return (
-      <div className="min-h-screen bg-black text-white">
-        {/* Main content */}
-        <div className="max-w-4xl mx-auto bg-white rounded-lg overflow-hidden">
+        <>
+        <div className="w-full mx-auto bg-white rounded-lg overflow-hidden">
           {/* Header with logo and icons */}
           <div className="px-6 py-4 flex justify-between items-center">
             <div>
               <img 
-                src="/api/placeholder/60/60" 
-                alt="QCU Logo" 
+                src={logo}
                 className="rounded-full"
               />
             </div>
@@ -149,6 +148,8 @@ export default function BookCartPage() {
             </div>
           </div>
         </div>
-      </div>
+        
+        </>
+        
     );
   }

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import logo from '../../assets/logo.png'; // Adjust the path as necessary
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 export default function ViewBookPage() {
   const navigate = useNavigate();
 
@@ -9,14 +10,14 @@ export default function ViewBookPage() {
       {/* Header */}
       <header className="flex justify-between items-center bg-white p-4 shadow-md">
         <img
-          src="/logo.png"
+          src={logo}
           alt="Logo"
           className="w-16 h-16 cursor-pointer"
           onClick={() => navigate('/landing')}
         />
         <div className="flex gap-4 items-center">
           <button className="text-2xl">🛒</button>
-          <img
+          <AccountCircleIcon
             src="/user.png"
             alt="User"
             className="w-10 h-10 rounded-full cursor-pointer"
