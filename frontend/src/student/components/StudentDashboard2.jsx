@@ -12,52 +12,52 @@ function StudentDashboard2() {
   const [bookCount, setBookCount] = useState();
   const [sortField, setSortField] = useState("title");
   const [sortDirection, setSortDirection] = useState("asc");
-// Add these state variables
-const [currentPage, setCurrentPage] = useState(1);
-const [booksPerPage, setBooksPerPage] = useState(10);
+  // Add these state variables
+  const [currentPage, setCurrentPage] = useState(1);
+  const [booksPerPage, setBooksPerPage] = useState(10);
+  const [reservations, setReservations] = useState([]);
+  // Derived values
+  const totalPages = Math.ceil(books.length / booksPerPage);
 
-// Derived values
-const totalPages = Math.ceil(books.length / booksPerPage);
+  const paginatedBooks = books.slice(
+    (currentPage - 1) * booksPerPage,
+    currentPage * booksPerPage
+  );
 
-const paginatedBooks = books.slice(
-  (currentPage - 1) * booksPerPage,
-  currentPage * booksPerPage
-);
+  // Pagination handlers
+  const handlePageChange = (pageNumber) => {
+    // Make sure the page number is within valid range
+    if (pageNumber >= 1 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+    }
+  };
 
-// Pagination handlers
-const handlePageChange = (pageNumber) => {
-  // Make sure the page number is within valid range
-  if (pageNumber >= 1 && pageNumber <= totalPages) {
-    setCurrentPage(pageNumber);
-  }
-};
+  const handleBooksPerPageChange = (newBooksPerPage) => {
+    setBooksPerPage(newBooksPerPage);
+    // Reset to page 1 when changing items per page
+    setCurrentPage(1);
+  };
 
-const handleBooksPerPageChange = (newBooksPerPage) => {
-  setBooksPerPage(newBooksPerPage);
-  // Reset to page 1 when changing items per page
-  setCurrentPage(1);
-};
+  // Helper function to determine which page numbers to show
+  const getPageNumbersToShow = (current, total) => {
+    if (total <= 5) {
+      // If we have 5 or fewer pages, show all
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
 
-// Helper function to determine which page numbers to show
-const getPageNumbersToShow = (current, total) => {
-  if (total <= 5) {
-    // If we have 5 or fewer pages, show all
-    return Array.from({ length: total }, (_, i) => i + 1);
-  }
-  
-  // Handle cases where we're near the beginning
-  if (current <= 3) {
-    return [1, 2, 3, 4, 5];
-  }
-  
-  // Handle cases where we're near the end
-  if (current >= total - 2) {
-    return [total - 4, total - 3, total - 2, total - 1, total];
-  }
-  
-  // Otherwise show current page and 2 pages on each side
-  return [current - 2, current - 1, current, current + 1, current + 2];
-};
+    // Handle cases where we're near the beginning
+    if (current <= 3) {
+      return [1, 2, 3, 4, 5];
+    }
+
+    // Handle cases where we're near the end
+    if (current >= total - 2) {
+      return [total - 4, total - 3, total - 2, total - 1, total];
+    }
+
+    // Otherwise show current page and 2 pages on each side
+    return [current - 2, current - 1, current, current + 1, current + 2];
+  };
   const columns = [
     { field: "title", label: "Title" },
     { field: "author", label: "Author" },
@@ -94,7 +94,6 @@ const getPageNumbersToShow = (current, total) => {
       };
 
       setUsers([transformedData]); // put inside an array because setUsers expects an array
-      console.log(transformedData);
       setError(null);
     } catch (err) {
       setError(`Error fetching user: ${err.message}`);
@@ -129,7 +128,6 @@ const getPageNumbersToShow = (current, total) => {
       const borrowedBooksCount = data.borrowedBooksCount;
       setBookCount(borrowedBooksCount);
       setError(null);
-      console.log("Total Borrowed Books:", borrowedBooksCount);
     } catch (err) {
       setError(`Error fetching borrowed books count: ${err.message}`);
       toast.error(`Failed to load borrowed books count: ${err.message}`);
@@ -182,18 +180,63 @@ const getPageNumbersToShow = (current, total) => {
       const data = await response.json();
       setBooks(data);
       setLoading(false);
-      console.log("asdsadasd" + data);
     } catch (err) {
       setError(`Error fetching books: ${err.message}`);
       setLoading(false);
     }
   };
 
+  const handleRequestBorrowBook = async (book) => {
+    const bookId = book[0];
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/books/status/${bookId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ statusId: 2 }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(data.message || "Book status updated.");
+      } else {
+        alert(data.error || "Failed to update book status.");
+      }
+    } catch (error) {
+      console.error("Error updating book status:", error);
+      alert("Failed to borrow the book.");
+    }
+  };
+
+  const fetchReservations = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/books/reservations"); // Adjust URL as needed
+      if (!response.ok) {
+        throw new Error(`Failed to fetch reservations: ${response.status}`);
+      }
+      const data = await response.json();
+      setReservations(data.reservations); // Update the state with the array of reservations
+      console.log("Reservation ID:", JSON.stringify(data.reservations));
+      setLoading(false);
+    } catch (err) {
+      setError(`Error fetching reservations: ${err.message}`);
+      setLoading(false);
+    }
+  };
+  
+
   useEffect(() => {
     fetchUserById();
     fetchBorrowedBooksCount();
     fetchBorrowedBooks();
     fetchBooks();
+    fetchReservations();
   }, []);
   // Menu items for student dashboard
   const menuItems = [
@@ -596,316 +639,395 @@ const getPageNumbersToShow = (current, total) => {
                 </p>
               </div>
               <div className="overflow-x-auto">
-  <table className="min-w-full divide-y divide-gray-200">
-    <thead className="bg-gray-50">
-      <tr>
-        {columns.map((column) => (
-          <th
-            key={column.field}
-            className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer ${
-              column.field === "actions" ? "text-right" : ""
-            }`}
-            onClick={() =>
-              column.field !== "actions" && handleSort(column.field)
-            }
-          >
-            <div className="flex items-center">
-              {column.label}
-              {sortField === column.field && (
-                <span className="ml-1">
-                  {sortDirection === "asc" ? "▲" : "▼"}
-                </span>
-              )}
-            </div>
-          </th>
-        ))}
-      </tr>
-    </thead>
-    <tbody className="bg-white divide-y divide-gray-200">
-      {loading ? (
-        <tr>
-          <td colSpan={columns.length} className="px-6 py-4 text-center">
-            <div className="flex justify-center">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-            </div>
-          </td>
-        </tr>
-      ) : paginatedBooks.length > 0 ? (
-        paginatedBooks.map((book) => (
-          <tr key={book[0]} className="hover:bg-gray-50">
-            <td className="px-6 py-4 whitespace-nowrap">{book[1]}</td>
-            <td className="px-6 py-4 whitespace-nowrap">{book[2]}</td>
-            <td className="px-6 py-4 whitespace-nowrap">{book[4]}</td>
-            <td className="px-6 py-4 whitespace-nowrap">
-              {book[3]}
-            </td>
-            <td className="px-6 py-4 whitespace-nowrap">
-              {book[5]}
-            </td>
-            <td className="px-6 py-4 whitespace-nowrap">{book[8]}</td>
-            <td className="px-6 py-4 whitespace-nowrap">
-              {book[7]}
-            </td>
-            <td className="px-6 py-4 whitespace-nowrap text-right">
-              <button
-                onClick={() => handleOpenModal(book)}
-                className="text-blue-600 hover:text-blue-900 mr-3"
-                disabled={loading}
-              >
-                Borrow
-              </button>
-            </td>
-          </tr>
-        ))
-      ) : (
-        <tr>
-          <td
-            colSpan={columns.length}
-            className="px-6 py-4 text-center text-sm text-gray-500"
-          >
-            No books found matching your search criteria
-          </td>
-        </tr>
-      )}
-    </tbody>
-  </table>
-  
-  {/* Pagination */}
-  <div className="px-6 py-3 flex items-center justify-between border-t border-gray-200">
-    <div className="flex-1 flex justify-between sm:hidden">
-      <button
-        onClick={() => handlePageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-        className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-          currentPage === 1
-            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-            : "bg-white text-gray-700 hover:bg-gray-50"
-        }`}
-      >
-        Previous
-      </button>
-      <button
-        onClick={() => handlePageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-          currentPage === totalPages
-            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-            : "bg-white text-gray-700 hover:bg-gray-50"
-        }`}
-      >
-        Next
-      </button>
-    </div>
-    <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-      <div>
-        <p className="text-sm text-gray-700">
-          Showing{" "}
-          <span className="font-medium">
-            {books.length > 0 ? (currentPage - 1) * booksPerPage + 1 : 0}
-          </span>{" "}
-          to{" "}
-          <span className="font-medium">
-            {Math.min(currentPage * booksPerPage, books.length)}
-          </span>{" "}
-          of <span className="font-medium">{books.length}</span> results
-        </p>
-      </div>
-      <div>
-        <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-          <button
-            onClick={() => handlePageChange(1)}
-            disabled={currentPage === 1}
-            className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
-              currentPage === 1
-                ? "text-gray-300 cursor-not-allowed"
-                : "text-gray-500 hover:bg-gray-50"
-            }`}
-          >
-            <span className="sr-only">First Page</span>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M15.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-              <path fillRule="evenodd" d="M7.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L3.414 10l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-            </svg>
-          </button>
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className={`relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium ${
-              currentPage === 1
-                ? "text-gray-300 cursor-not-allowed"
-                : "text-gray-500 hover:bg-gray-50"
-            }`}
-          >
-            <span className="sr-only">Previous</span>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-          </button>
-          
-          {/* Page numbers */}
-          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-            const pageNumber = getPageNumbersToShow(currentPage, totalPages)[i];
-            return (
-              <button
-                key={pageNumber}
-                onClick={() => handlePageChange(pageNumber)}
-                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                  currentPage === pageNumber
-                    ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
-                    : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
-                }`}
-              >
-                {pageNumber}
-              </button>
-            );
-          })}
-          
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className={`relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium ${
-              currentPage === totalPages
-                ? "text-gray-300 cursor-not-allowed"
-                : "text-gray-500 hover:bg-gray-50"
-            }`}
-          >
-            <span className="sr-only">Next</span>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-            </svg>
-          </button>
-          <button
-            onClick={() => handlePageChange(totalPages)}
-            disabled={currentPage === totalPages}
-            className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
-              currentPage === totalPages
-                ? "text-gray-300 cursor-not-allowed"
-                : "text-gray-500 hover:bg-gray-50"
-            }`}
-          >
-            <span className="sr-only">Last Page</span>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4.293 15.707a1 1 0 001.414 0l5-5a1 1 0 000-1.414l-5-5a1 1 0 00-1.414 1.414L8.586 10 4.293 14.293a1 1 0 000 1.414z" clipRule="evenodd" />
-              <path fillRule="evenodd" d="M12.293 15.707a1 1 0 001.414 0l5-5a1 1 0 000-1.414l-5-5a1 1 0 00-1.414 1.414L16.586 10l-4.293 4.293a1 1 0 000 1.414z" clipRule="evenodd" />
-            </svg>
-          </button>
-        </nav>
-      </div>
-    </div>
-    
-    {/* Items per page selector */}
-    <div className="mt-2 sm:mt-0 ml-4">
-      <select
-        className="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-        value={booksPerPage}
-        onChange={(e) => handleBooksPerPageChange(Number(e.target.value))}
-      >
-        <option value={5}>5 per page</option>
-        <option value={10}>10 per page</option>
-        <option value={25}>25 per page</option>
-        <option value={50}>50 per page</option>
-      </select>
-    </div>
-  </div>
-</div>
-            </div>
-          )}
-
-          {activeMenu === "Reservations" && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Book Reservations</h2>
-              <p className="text-gray-600 mb-6">
-                Manage your book reservations across all campuses.
-              </p>
-
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg
-                      className="h-5 w-5 text-yellow-400"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm text-yellow-700">
-                      You have 1 book ready for pickup at {activeCampus} Campus.
-                      Please collect it by May 1, 2025.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Book Title
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Status
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Campus
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Date
-                      </th>
-                      <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Actions
-                      </th>
+                      {columns.map((column) => (
+                        <th
+                          key={column.field}
+                          className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer ${
+                            column.field === "actions" ? "text-right" : ""
+                          }`}
+                          onClick={() =>
+                            column.field !== "actions" &&
+                            handleSort(column.field)
+                          }
+                        >
+                          <div className="flex items-center">
+                            {column.label}
+                            {sortField === column.field && (
+                              <span className="ml-1">
+                                {sortDirection === "asc" ? "▲" : "▼"}
+                              </span>
+                            )}
+                          </div>
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    <tr>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        Introduction to Data Science
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                          Ready for pickup
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {activeCampus}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        April 28, 2025
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button className="text-blue-600 hover:text-blue-900">
-                          Cancel
-                        </button>
-                      </td>
-                    </tr>
+                    {loading ? (
+                      <tr>
+                        <td
+                          colSpan={columns.length}
+                          className="px-6 py-4 text-center"
+                        >
+                          <div className="flex justify-center">
+                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : paginatedBooks.length > 0 ? (
+                      paginatedBooks.map((book) => (
+                        <tr key={book[0]} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {book[1]}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {book[2]}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {book[4]}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {book[3]}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {book[5]}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {book[8]}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {book[7]}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                            <button
+                              onClick={() => handleRequestBorrowBook(book)}
+                              className="text-blue-600 hover:text-blue-900 mr-3"
+                              disabled={loading}
+                            >
+                              Borrow
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan={columns.length}
+                          className="px-6 py-4 text-center text-sm text-gray-500"
+                        >
+                          No books found matching your search criteria
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
+
+                {/* Pagination */}
+                <div className="px-6 py-3 flex items-center justify-between border-t border-gray-200">
+                  <div className="flex-1 flex justify-between sm:hidden">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
+                        currentPage === 1
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-white text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
+                        currentPage === totalPages
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-white text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      Next
+                    </button>
+                  </div>
+                  <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-gray-700">
+                        Showing{" "}
+                        <span className="font-medium">
+                          {books.length > 0
+                            ? (currentPage - 1) * booksPerPage + 1
+                            : 0}
+                        </span>{" "}
+                        to{" "}
+                        <span className="font-medium">
+                          {Math.min(currentPage * booksPerPage, books.length)}
+                        </span>{" "}
+                        of <span className="font-medium">{books.length}</span>{" "}
+                        results
+                      </p>
+                    </div>
+                    <div>
+                      <nav
+                        className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                        aria-label="Pagination"
+                      >
+                        <button
+                          onClick={() => handlePageChange(1)}
+                          disabled={currentPage === 1}
+                          className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
+                            currentPage === 1
+                              ? "text-gray-300 cursor-not-allowed"
+                              : "text-gray-500 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="sr-only">First Page</span>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M15.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 010 1.414z"
+                              clipRule="evenodd"
+                            />
+                            <path
+                              fillRule="evenodd"
+                              d="M7.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L3.414 10l4.293 4.293a1 1 0 010 1.414z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className={`relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium ${
+                            currentPage === 1
+                              ? "text-gray-300 cursor-not-allowed"
+                              : "text-gray-500 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="sr-only">Previous</span>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
+
+                        {/* Page numbers */}
+                        {Array.from(
+                          { length: Math.min(5, totalPages) },
+                          (_, i) => {
+                            const pageNumber = getPageNumbersToShow(
+                              currentPage,
+                              totalPages
+                            )[i];
+                            return (
+                              <button
+                                key={pageNumber}
+                                onClick={() => handlePageChange(pageNumber)}
+                                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                                  currentPage === pageNumber
+                                    ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                                    : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                                }`}
+                              >
+                                {pageNumber}
+                              </button>
+                            );
+                          }
+                        )}
+
+                        <button
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          className={`relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium ${
+                            currentPage === totalPages
+                              ? "text-gray-300 cursor-not-allowed"
+                              : "text-gray-500 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="sr-only">Next</span>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handlePageChange(totalPages)}
+                          disabled={currentPage === totalPages}
+                          className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
+                            currentPage === totalPages
+                              ? "text-gray-300 cursor-not-allowed"
+                              : "text-gray-500 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="sr-only">Last Page</span>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M4.293 15.707a1 1 0 001.414 0l5-5a1 1 0 000-1.414l-5-5a1 1 0 00-1.414 1.414L8.586 10 4.293 14.293a1 1 0 000 1.414z"
+                              clipRule="evenodd"
+                            />
+                            <path
+                              fillRule="evenodd"
+                              d="M12.293 15.707a1 1 0 001.414 0l5-5a1 1 0 000-1.414l-5-5a1 1 0 00-1.414 1.414L16.586 10l-4.293 4.293a1 1 0 000 1.414z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
+                      </nav>
+                    </div>
+                  </div>
+
+                  {/* Items per page selector */}
+                  <div className="mt-2 sm:mt-0 ml-4">
+                    <select
+                      className="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                      value={booksPerPage}
+                      onChange={(e) =>
+                        handleBooksPerPageChange(Number(e.target.value))
+                      }
+                    >
+                      <option value={5}>5 per page</option>
+                      <option value={10}>10 per page</option>
+                      <option value={25}>25 per page</option>
+                      <option value={50}>50 per page</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
           )}
+         {activeMenu === "Reservations" && (
+  <div className="bg-white rounded-lg shadow p-6">
+    <h2 className="text-xl font-semibold mb-4">Book Reservations</h2>
+    <p className="text-gray-600 mb-6">
+      Manage your book reservations across all campuses.
+    </p>
+
+    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+      <div className="flex">
+        <div className="flex-shrink-0">
+          <svg
+            className="h-5 w-5 text-yellow-400"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fillRule="evenodd"
+              d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </div>
+        <div className="ml-3">
+          <p className="text-sm text-yellow-700">
+            You have 1 book ready for pickup at {activeCampus} Campus. Please collect it by May 1, 2025.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Book Title
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Status
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Campus
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Date
+            </th>
+            <th
+              scope="col"
+              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            >
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {reservations && reservations.length > 0 ? (
+            reservations.map((reservation, index) => (
+              <tr key={index}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  {reservation[0]} {/* Book Title */}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                    {reservation[1]} {/* Status */}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {reservation[2]} {/* Campus */}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  April 28, 2025 {/* You can replace this with the actual date if available */}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <button className="text-blue-600 hover:text-blue-900">
+                    Cancel
+                  </button>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
+                No reservations found
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
+
 
           {activeMenu === "Help & FAQs" && (
             <div className="bg-white rounded-lg shadow">

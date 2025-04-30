@@ -277,92 +277,108 @@ function BookReservationManagement() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {reservations.length > 0 ? (
-              reservations.map((reservation) => (
-                <tr key={reservation[1]} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded bg-gray-200 flex items-center justify-center text-gray-500 font-semibold">
-                          {reservation[2]}
-                        </div>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {reservation[0]}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          ID: {reservation.bookId}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {reservation[3]}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      ID: {reservation[2]}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">
-                      {formatDate(reservation[4])} {/* Reservation Date */}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {formatDate(reservation[5])} {/* Due Date */}
-                    </div>
-                    {reservation.status !== "returned" &&
-                      reservation.status !== "cancelled" && (
-                        <div
-                          className={`text-xs ${
-                            new Date(reservation[5]) < new Date()
-                              ? "text-red-600"
-                              : "text-gray-500"
-                          }`}
-                        >
-                          {calculateDaysRemaining(reservation[5])}
-                        </div>
-                      )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClassName(
-                        reservation[6]
-                      )}`}
-                    >
-                      {reservation[6]}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    {(reservation[6] === "overdue" ||
-                      reservation[6] === "borrowed") && (
-                      <>
-                        <button
-                          onClick={() =>
-                            handleUpdateStatus(reservation.id, "returned")
-                          }
-                          className="text-green-600 hover:text-green-900 mr-3"
-                        >
-                          Return
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td
-                  colSpan="6"
-                  className="px-6 py-4 text-center text-sm text-gray-500"
+          {reservations.length > 0 ? (
+  reservations.map((reservation) => (
+    <tr key={reservation[1]} className="hover:bg-gray-50">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className="flex-shrink-0 h-10 w-10">
+            <div className="h-10 w-10 rounded bg-gray-200 flex items-center justify-center text-gray-500 font-semibold">
+              {reservation[2]}
+            </div>
+          </div>
+          <div className="ml-4">
+            <div className="text-sm font-medium text-gray-900">
+              {reservation[0]}
+            </div>
+            <div className="text-sm text-gray-500">
+              ID: {reservation.bookId}
+            </div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="text-sm font-medium text-gray-900">
+          {reservation[3]}
+        </div>
+        <div className="text-sm text-gray-500">
+          ID: {reservation[2]}
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="text-sm text-gray-500">
+          {formatDate(reservation[4])} {/* Reservation Date */}
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        {reservation[6] !== "pending_processing" ? (
+          <>
+            <div className="text-sm text-gray-900">
+              {formatDate(reservation[5])}
+            </div>
+            {reservation.status !== "returned" &&
+              reservation.status !== "cancelled" && (
+                <div
+                  className={`text-xs ${
+                    new Date(reservation[5]) < new Date()
+                      ? "text-red-600"
+                      : "text-gray-500"
+                  }`}
                 >
-                  No reservations found matching your search criteria
-                </td>
-              </tr>
-            )}
+                  {calculateDaysRemaining(reservation[5])}
+                </div>
+              )}
+          </>
+        ) : (
+          <div className="text-sm text-gray-500 italic">Not set</div>
+        )}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span
+          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClassName(
+            reservation[6]
+          )}`}
+        >
+          {reservation[6]}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        {(reservation[6] === "overdue" ||
+          reservation[6] === "borrowed") && (
+          <button
+            onClick={() =>
+              handleUpdateStatus(reservation.id, "returned")
+            }
+            className="text-green-600 hover:text-green-900 mr-3"
+          >
+            Return
+          </button>
+        )}
+
+        {reservation[6] === "pending_processing" && (
+          <button
+            onClick={() =>
+              handleUpdateStatus(reservation.id, "accepted")
+            }
+            className="text-blue-600 hover:text-blue-900 mr-3"
+          >
+            Accept
+          </button>
+        )}
+      </td>
+    </tr>
+  ))
+) : (
+  <tr>
+    <td
+      colSpan="6"
+      className="px-6 py-4 text-center text-sm text-gray-500"
+    >
+      No reservations found matching your search criteria
+    </td>
+  </tr>
+)}
+
           </tbody>
         </table>
       </div>

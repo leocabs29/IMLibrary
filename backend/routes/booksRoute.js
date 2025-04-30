@@ -17,7 +17,7 @@ router.get("/", async (req, res) => {
       B.ISBN,
       B.PUBLICATION_YEAR,
       COUNT(*) AS total_copies,
-      SUM(CASE WHEN S.STATUS_ID NOT IN (4, 7) THEN 1 ELSE 0 END) AS available_copies
+      SUM(CASE WHEN S.STATUS_ID NOT IN (4, 7 ) THEN 1 ELSE 0 END) AS available_copies
     FROM BOOKS B
     JOIN CATEGORY C ON B.CATEGORY_ID = C.CATEGORY_ID
     JOIN BOOK_STATUS S ON S.STATUS_ID = B.STATUS_ID
@@ -89,23 +89,59 @@ router.get("/borrowable", async (req, res) => {
   try {
     connection = await db.getConnection();
     const result = await connection.execute(`SELECT 
-  b.book_id, 
-  b.title, 
+  b.book_id,
+  b.title,
   CASE 
-    WHEN bb.borrow_date <= SYSDATE - 7 THEN 'Overdue'
-    ELSE s.status_name
+    WHEN (
+      SELECT bb.borrow_date 
+      FROM borrowed_books bb 
+      WHERE bb.book_id = b.book_id 
+      AND ROWNUM = 1
+    ) <= SYSDATE - 7 THEN 'Overdue'
+    ELSE (
+      SELECT s.status_name 
+      FROM book_status s 
+      WHERE s.status_id = b.status_id
+    )
   END AS status_name,
-  b.author, 
-  u.FULL_NAME,   
-  bb.borrow_date, 
-  bb.due_date,
-  bb.borrowed_id
+  b.author,
+  (
+    SELECT u.full_name
+    FROM users u
+    WHERE u.user_id = (
+      SELECT bb.user_id
+      FROM borrowed_books bb
+      WHERE bb.book_id = b.book_id 
+      AND ROWNUM = 1
+    )
+  ) AS full_name,
+  (
+    SELECT bb.borrow_date
+    FROM borrowed_books bb
+    WHERE bb.book_id = b.book_id 
+    AND ROWNUM = 1
+  ) AS borrow_date,
+  (
+    SELECT bb.due_date
+    FROM borrowed_books bb
+    WHERE bb.book_id = b.book_id 
+    AND ROWNUM = 1
+  ) AS due_date,
+  (
+    SELECT bb.borrowed_id
+    FROM borrowed_books bb
+    WHERE bb.book_id = b.book_id 
+    AND ROWNUM = 1
+  ) AS borrowed_id
 FROM books b
-JOIN book_status s ON b.status_id = s.status_id
-JOIN borrowed_books bb ON b.book_id = bb.book_id
-JOIN users u ON u.user_id = bb.user_id
-WHERE s.status_id IN (4, 7)
-ORDER BY bb.borrow_date`);
+WHERE b.status_id IN (4, 7)
+ORDER BY (
+  SELECT bb.borrow_date 
+  FROM borrowed_books bb 
+  WHERE bb.book_id = b.book_id 
+  AND ROWNUM = 1
+)
+`);
     res.json(result.rows);
   } catch (err) {
     console.error(err);
@@ -134,10 +170,11 @@ router.get("/book-reservation", async (req, res) => {
 FROM BOOKS B
 JOIN CATEGORY C ON B.CATEGORY_ID = C.CATEGORY_ID
 JOIN BOOK_STATUS S ON B.STATUS_ID = S.STATUS_ID
-JOIN BORROWED_BOOKS BD ON BD.BOOK_ID = B.BOOK_ID
-JOIN USERS U ON BD.USER_ID = U.USER_ID
-WHERE S.STATUS_ID IN (4,7,2)
+LEFT JOIN BORROWED_BOOKS BD ON BD.BOOK_ID = B.BOOK_ID
+LEFT JOIN USERS U ON BD.USER_ID = U.USER_ID
+WHERE S.STATUS_ID IN (4 , 7 ,2 )
 ORDER BY B.TITLE
+
 `);
     res.json(result.rows);
   } catch (err) {
@@ -342,8 +379,78 @@ router.post("/add", async (req, res) => {
   }
 });
 
+router.put('/status/:bookId', async (req, res) => {
+  const bookId = parseInt(req.params.bookId);
+
+  if (!bookId) {
+    return res.status(400).json({ error: 'Book ID is required.' });
+  }
+
+  let connection;
+
+  try {
+    connection = await db.getConnection();
+
+    const result = await connection.execute(
+      `UPDATE books SET status_id = 2 WHERE book_id = :bookId`,
+      { bookId },
+      { autoCommit: true }
+    );
+
+    if (result.rowsAffected === 0) {
+      return res.status(404).json({ message: 'Book not found.' });
+    }
+
+    res.status(200).json({ message: 'Status updated to 2 successfully.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Database error.' });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close();
+      } catch (err) {
+        console.error('Error closing connection:', err);
+      }
+    }
+  }
+});
 
 
+// Route to get books with status 2 or 3
+router.get("/reservations", async (req, res) => {
+  let connection;
+
+  try {
+    // Get a connection from the pool
+    connection = await db.getConnection();
+
+    // SQL query with no parameters, just filtering by status_id
+    const result = await connection.execute(
+      `SELECT 
+         B.TITLE, 
+         S.STATUS_NAME, 
+         LB.BRANCH_NAME
+       FROM BOOKS B
+       JOIN BOOK_STATUS S ON B.STATUS_ID = S.STATUS_ID
+       JOIN LIBRARY_BRANCHES LB ON LB.BRANCH_ID = B.BRANCH_ID
+       WHERE S.STATUS_ID IN (2, 3)`
+    );
+
+    if (result.rows && result.rows.length > 0) {
+      res.status(200).json({ reservations: result.rows });
+    } else {
+      res.status(200).json({ reservations: [] });
+    }
+  } catch (err) {
+    console.error("Error fetching reservations:", err);
+    res.status(500).json({ error: "Database error while fetching reservations", details: err.message });
+  } finally {
+    if (connection) {
+      await connection.close(); // Always release the connection
+    }
+  }
+});
 
 
 module.exports = router;
