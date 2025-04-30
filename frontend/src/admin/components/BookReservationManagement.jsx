@@ -306,9 +306,14 @@ function BookReservationManagement() {
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
-        <div className="text-sm text-gray-500">
-          {formatDate(reservation[4])} {/* Reservation Date */}
-        </div>
+        {/* Only display reservation date if status is not 'pending_processing' */}
+        {reservation[6] !== "pending_processing" ? (
+          <div className="text-sm text-gray-500">
+            {formatDate(reservation[4])} {/* Reservation Date */}
+          </div>
+        ) : (
+          <div className="text-sm text-gray-500 italic">Not set</div>
+        )}
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         {reservation[6] !== "pending_processing" ? (
@@ -316,18 +321,17 @@ function BookReservationManagement() {
             <div className="text-sm text-gray-900">
               {formatDate(reservation[5])}
             </div>
-            {reservation.status !== "returned" &&
-              reservation.status !== "cancelled" && (
-                <div
-                  className={`text-xs ${
-                    new Date(reservation[5]) < new Date()
-                      ? "text-red-600"
-                      : "text-gray-500"
-                  }`}
-                >
-                  {calculateDaysRemaining(reservation[5])}
-                </div>
-              )}
+            {reservation[6] !== "returned" && reservation[6] !== "cancelled" && (
+              <div
+                className={`text-xs ${
+                  new Date(reservation[5]) < new Date()
+                    ? "text-red-600"
+                    : "text-gray-500"
+                }`}
+              >
+                {calculateDaysRemaining(reservation[5])}
+              </div>
+            )}
           </>
         ) : (
           <div className="text-sm text-gray-500 italic">Not set</div>
@@ -343,8 +347,7 @@ function BookReservationManagement() {
         </span>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-        {(reservation[6] === "overdue" ||
-          reservation[6] === "borrowed") && (
+        {(reservation[6] === "overdue" || reservation[6] === "borrowed") && (
           <button
             onClick={() =>
               handleUpdateStatus(reservation.id, "returned")
@@ -378,6 +381,7 @@ function BookReservationManagement() {
     </td>
   </tr>
 )}
+
 
           </tbody>
         </table>
