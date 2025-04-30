@@ -3,7 +3,7 @@ const oracledb = require('oracledb');
 oracledb.initOracleClient({ libDir: 'C:\\oraclexe\\instantclient_19_26' });
 
 const dbConfig = {
-  user: 'library_user',
+  user: 'leo',
   password: 'mypassword',
   connectString: 'localhost/XE'
 };

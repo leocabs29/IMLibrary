@@ -1,0 +1,306 @@
+-- Oracle PL/SQL Database Schema
+
+-- Drop existing tables if they exist
+-- Drop book_transactions table if exists
+-- Drop book_transactions table if exists
+BEGIN
+   EXECUTE IMMEDIATE 'DROP TABLE book_transactions CASCADE CONSTRAINTS';
+EXCEPTION
+   WHEN OTHERS THEN
+      IF SQLCODE != -942 THEN
+         RAISE;
+      END IF;
+END;
+/
+
+-- Drop books table if exists
+BEGIN
+   EXECUTE IMMEDIATE 'DROP TABLE books CASCADE CONSTRAINTS';
+EXCEPTION
+   WHEN OTHERS THEN
+      IF SQLCODE != -942 THEN
+         RAISE;
+      END IF;
+END;
+/
+
+-- Drop users table if exists
+BEGIN
+   EXECUTE IMMEDIATE 'DROP TABLE users CASCADE CONSTRAINTS';
+EXCEPTION
+   WHEN OTHERS THEN
+      IF SQLCODE != -942 THEN
+         RAISE;
+      END IF;
+END;
+/
+
+-- Drop library_branches table if exists
+BEGIN
+   EXECUTE IMMEDIATE 'DROP TABLE library_branches CASCADE CONSTRAINTS';
+EXCEPTION
+   WHEN OTHERS THEN
+      IF SQLCODE != -942 THEN
+         RAISE;
+      END IF;
+END;
+/
+
+
+-- Create library_branches table
+CREATE TABLE library_branches (
+    branch_id NUMBER PRIMARY KEY,
+    branch_name VARCHAR2(100) NOT NULL,
+    location VARCHAR2(200) NOT NULL,
+    contact_number VARCHAR2(20)
+);
+
+-- Create users table
+CREATE TABLE users (
+    user_id NUMBER PRIMARY KEY,
+    username VARCHAR2(50) UNIQUE NOT NULL,
+    password VARCHAR2(100) NOT NULL, -- In production, store hashed passwords
+    full_name VARCHAR2(100) NOT NULL,
+    email VARCHAR2(100) UNIQUE NOT NULL,
+    user_type VARCHAR2(10) CHECK (user_type IN ('admin', 'student')) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create books table
+CREATE TABLE books (
+    book_id NUMBER PRIMARY KEY,
+    title VARCHAR2(200) NOT NULL,
+    author VARCHAR2(100) NOT NULL,
+    isbn VARCHAR2(20) UNIQUE NOT NULL,
+    branch_id NUMBER REFERENCES library_branches(branch_id),
+    category VARCHAR2(50),
+    publication_year NUMBER(4),
+    status VARCHAR2(20) DEFAULT 'available' CHECK (status IN ('available', 'borrowed')),
+    total_copies NUMBER DEFAULT 1,
+    available_copies NUMBER DEFAULT 1
+);
+
+-- Create book_transactions table
+CREATE TABLE book_transactions (
+    transaction_id NUMBER PRIMARY KEY,
+    book_id NUMBER REFERENCES books(book_id),
+    user_id NUMBER REFERENCES users(user_id),
+    borrow_date DATE DEFAULT CURRENT_DATE,
+    due_date DATE,
+    return_date DATE,
+    fine_amount NUMBER(10,2) DEFAULT 0,
+    status VARCHAR2(20) DEFAULT 'borrowed' CHECK (status IN ('borrowed', 'returned')),
+    created_by NUMBER REFERENCES users(user_id)
+);
+
+-- Sequences for auto-increment
+CREATE SEQUENCE branch_seq START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE user_seq START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE book_seq START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE transaction_seq START WITH 1 INCREMENT BY 1;
+
+-- Insert sample data for library branches
+INSERT INTO library_branches (branch_id, branch_name, location, contact_number)
+VALUES (branch_seq.NEXTVAL, 'Main Branch', '123 Library St, Downtown', '555-1234');
+
+INSERT INTO library_branches (branch_id, branch_name, location, contact_number)
+VALUES (branch_seq.NEXTVAL, 'North Campus Branch', '456 College Ave, North Campus', '555-5678');
+
+INSERT INTO library_branches (branch_id, branch_name, location, contact_number)
+VALUES (branch_seq.NEXTVAL, 'South Branch', '789 Book Lane, South District', '555-9012');
+
+-- Insert sample admin user
+INSERT INTO users (user_id, username, password, full_name, email, user_type)
+VALUES (user_seq.NEXTVAL, 'admin', 'admin123', 'Admin User', 'admin@library.com', 'admin');
+
+-- Insert sample student users
+INSERT INTO users (user_id, username, password, full_name, email, user_type)
+VALUES (user_seq.NEXTVAL, 'student1', 'pass123', 'John Doe', 'john@example.com', 'student');
+
+INSERT INTO users (user_id, username, password, full_name, email, user_type)
+VALUES (user_seq.NEXTVAL, 'student2', 'pass123', 'Jane Smith', 'jane@example.com', 'student');
+
+-- Insert sample books
+INSERT INTO books (book_id, title, author, isbn, branch_id, category, publication_year, status, total_copies, available_copies)
+VALUES (book_seq.NEXTVAL, 'To Kill a Mockingbird', 'Harper Lee', '9780061120084', 1, 'Fiction', 1960, 'available', 3, 3);
+
+INSERT INTO books (book_id, title, author, isbn, branch_id, category, publication_year, status, total_copies, available_copies)
+VALUES (book_seq.NEXTVAL, '1984', 'George Orwell', '9780451524935', 1, 'Fiction', 1949, 'available', 2, 2);
+
+INSERT INTO books (book_id, title, author, isbn, branch_id, category, publication_year, status, total_copies, available_copies)
+VALUES (book_seq.NEXTVAL, 'The Great Gatsby', 'F. Scott Fitzgerald', '9780743273565', 2, 'Fiction', 1925, 'available', 2, 2);
+
+INSERT INTO books (book_id, title, author, isbn, branch_id, category, publication_year, status, total_copies, available_copies)
+VALUES (book_seq.NEXTVAL, 'Introduction to Algorithms', 'Thomas H. Cormen', '9780262033848', 2, 'Computer Science', 2009, 'available', 5, 5);
+
+INSERT INTO books (book_id, title, author, isbn, branch_id, category, publication_year, status, total_copies, available_copies)
+VALUES (book_seq.NEXTVAL, 'Physics for Scientists and Engineers', 'Serway and Jewett', '9781337553292', 3, 'Science', 2018, 'available', 3, 3);
+
+-------------------------------------------------------
+-- PL/SQL Procedures for Book Borrowing and Returning --
+-------------------------------------------------------
+
+-- Procedure to borrow books
+CREATE OR REPLACE PROCEDURE borrow_book (
+    p_user_id IN NUMBER,
+    p_book_id IN NUMBER,
+    p_admin_id IN NUMBER,
+    p_success OUT BOOLEAN,
+    p_message OUT VARCHAR2
+)
+IS
+    v_user_type VARCHAR2(10);
+    v_book_status VARCHAR2(20);
+    v_book_available NUMBER;
+    v_borrowed_count NUMBER;
+    v_due_date DATE;
+BEGIN
+    -- Check if user exists and is a student
+    SELECT user_type INTO v_user_type FROM users WHERE user_id = p_user_id;
+    
+    IF v_user_type != 'student' THEN
+        p_success := FALSE;
+        p_message := 'Only students can borrow books';
+        RETURN;
+    END IF;
+    
+    -- Check if book exists and is available
+    SELECT status, available_copies INTO v_book_status, v_book_available 
+    FROM books WHERE book_id = p_book_id;
+    
+    IF v_book_available <= 0 THEN
+        p_success := FALSE;
+        p_message := 'Book is not available for borrowing';
+        RETURN;
+    END IF;
+    
+    -- Check how many books the student has already borrowed
+    SELECT COUNT(*) INTO v_borrowed_count 
+    FROM book_transactions 
+    WHERE user_id = p_user_id AND status = 'borrowed';
+    
+    IF v_borrowed_count >= 2 THEN
+        p_success := FALSE;
+        p_message := 'Student has already borrowed the maximum allowed books (2)';
+        RETURN;
+    END IF;
+    
+    -- Set due date to 14 days from now
+    v_due_date := CURRENT_DATE + 14;
+    
+    -- Insert transaction
+    INSERT INTO book_transactions (
+        transaction_id, book_id, user_id, borrow_date, due_date, status, created_by
+    ) VALUES (
+        transaction_seq.NEXTVAL, p_book_id, p_user_id, CURRENT_DATE, v_due_date, 'borrowed', p_admin_id
+    );
+    
+    -- Update book status and available copies
+    UPDATE books 
+    SET available_copies = available_copies - 1,
+        status = CASE WHEN available_copies - 1 = 0 THEN 'borrowed' ELSE status END
+    WHERE book_id = p_book_id;
+    
+    COMMIT;
+    
+    p_success := TRUE;
+    p_message := 'Book borrowed successfully. Due date: ' || TO_CHAR(v_due_date, 'YYYY-MM-DD');
+    
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        p_success := FALSE;
+        p_message := 'User or book not found';
+        ROLLBACK;
+    WHEN OTHERS THEN
+        p_success := FALSE;
+        p_message := 'Error: ' || SQLERRM;
+        ROLLBACK;
+END;
+/
+
+-- Procedure to return books
+CREATE OR REPLACE PROCEDURE return_book (
+    p_transaction_id IN NUMBER,
+    p_admin_id IN NUMBER,
+    p_success OUT BOOLEAN,
+    p_message OUT VARCHAR2
+)
+IS
+    v_book_id NUMBER;
+    v_due_date DATE;
+    v_return_date DATE := CURRENT_DATE;
+    v_fine_amount NUMBER(10,2) := 0;
+    v_days_overdue NUMBER;
+BEGIN
+    -- Get book ID and due date from transaction
+    SELECT book_id, due_date 
+    INTO v_book_id, v_due_date 
+    FROM book_transactions 
+    WHERE transaction_id = p_transaction_id AND status = 'borrowed';
+    
+    -- Calculate fine if overdue (e.g., $1 per day)
+    IF v_return_date > v_due_date THEN
+        v_days_overdue := v_return_date - v_due_date;
+        v_fine_amount := v_days_overdue * 1.00; -- $1 per day
+    END IF;
+    
+    -- Update transaction
+    UPDATE book_transactions
+    SET return_date = v_return_date,
+        fine_amount = v_fine_amount,
+        status = 'returned'
+    WHERE transaction_id = p_transaction_id;
+    
+    -- Update book status and available copies
+    UPDATE books
+    SET available_copies = available_copies + 1,
+        status = 'available'
+    WHERE book_id = v_book_id;
+    
+    COMMIT;
+    
+    IF v_fine_amount > 0 THEN
+        p_success := TRUE;
+        p_message := 'Book returned successfully. Fine amount: $' || TO_CHAR(v_fine_amount, '999.99');
+    ELSE
+        p_success := TRUE;
+        p_message := 'Book returned successfully with no fine.';
+    END IF;
+    
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        p_success := FALSE;
+        p_message := 'Transaction not found or book already returned';
+        ROLLBACK;
+    WHEN OTHERS THEN
+        p_success := FALSE;
+        p_message := 'Error: ' || SQLERRM;
+        ROLLBACK;
+END;
+/
+
+-- Function to check if a student can borrow more books
+CREATE OR REPLACE FUNCTION can_borrow_more(p_user_id IN NUMBER) 
+RETURN BOOLEAN
+IS
+    v_borrowed_count NUMBER;
+    v_user_type VARCHAR2(10);
+BEGIN
+    -- Check if user is a student
+    SELECT user_type INTO v_user_type FROM users WHERE user_id = p_user_id;
+    
+    IF v_user_type != 'student' THEN
+        RETURN FALSE;
+    END IF;
+    
+    -- Count borrowed books
+    SELECT COUNT(*) INTO v_borrowed_count 
+    FROM book_transactions 
+    WHERE user_id = p_user_id AND status = 'borrowed';
+    
+    RETURN (v_borrowed_count < 2);
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN FALSE;
+END;
+/

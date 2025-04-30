@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
 import AdminDashboard from './admin/components/adminDashboard';
 import ViewBorrowedBooks from './admin/components/ViewBorrowedBooks';
 import Homepage from './student/components/homepage';
@@ -13,9 +14,10 @@ import StudentDashboard from './student/components/StudentDashboard2';
 function App() {
   return (
     <Router>
+      <ToastContainer />
+
       <Routes>
         <Route path="/" element={<Homepage />} />
-        <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin-borrowed-books" element={<ViewBorrowedBooks />} />

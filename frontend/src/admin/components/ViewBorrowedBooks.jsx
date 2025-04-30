@@ -109,15 +109,7 @@ function ViewBorrowedBooks() {
                 </svg>
               </div>
             </div>
-            <select
-              className="pl-3 pr-10 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-            >
-              <option value="all">All Status</option>
-              <option value="overdue">Overdue</option>
-              <option value="returned">Returned</option>
-            </select>
+           
           </div>
         </div>
       </div>
