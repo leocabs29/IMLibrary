@@ -88,7 +88,6 @@ function Login() {
         localStorage.setItem("user_id", data.user.user_id);
         localStorage.setItem("token", data.token); // Store token if your API returns one
         localStorage.setItem("user_role", data.user.role.toLowerCase());
-        
         // Check user role and redirect
         if (data.user.role.toLowerCase() === "student") {
           navigate("/student-dashboard2");

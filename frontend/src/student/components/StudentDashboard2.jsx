@@ -186,33 +186,8 @@ function StudentDashboard2() {
     }
   };
 
-  const handleRequestBorrowBook = async (book) => {
-    const bookId = book[0];
-
-    try {
-      const response = await fetch(
-        `http://localhost:3000/books/status/${bookId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ statusId: 2 }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert(data.message || "Book status updated.");
-      } else {
-        alert(data.error || "Failed to update book status.");
-      }
-    } catch (error) {
-      console.error("Error updating book status:", error);
-      alert("Failed to borrow the book.");
-    }
-  };
+  
+  
 
   const fetchReservations = async () => {
     try {
@@ -227,6 +202,32 @@ function StudentDashboard2() {
     } catch (err) {
       setError(`Error fetching reservations: ${err.message}`);
       setLoading(false);
+    }
+  };
+  const handleBorrowBook = async (book) => {
+    const bookId = book[0];  // Assuming book[0] is the book ID
+    const userId = localStorage.getItem("user_id");
+  
+    try {
+      const response = await fetch(`http://localhost:3000/books/borrowed_book/${bookId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ user_id: userId }),  // Send the user_id from localStorage
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok) {
+        alert(data.message || "Book borrow request submitted.");
+        // Optionally, update UI, e.g., refresh the book list
+      } else {
+        alert(data.error || "Failed to submit borrow request.");
+      }
+    } catch (error) {
+      console.error("Error borrowing book:", error);
+      alert("Failed to borrow the book.");
     }
   };
   
@@ -703,7 +704,7 @@ function StudentDashboard2() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right">
                             <button
-                              onClick={() => handleRequestBorrowBook(book)}
+                               onClick={() => handleBorrowBook(book)}  // Add the handler here
                               className="text-blue-600 hover:text-blue-900 mr-3"
                               disabled={loading}
                             >
