@@ -130,7 +130,6 @@ function StudentDashboard2() {
       setError(null);
     } catch (err) {
       setError(`Error fetching borrowed books count: ${err.message}`);
-      toast.error(`Failed to load borrowed books count: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -165,7 +164,6 @@ function StudentDashboard2() {
       setError(null);
     } catch (err) {
       setError(`Error fetching borrowed books: ${err.message}`);
-      toast.error(`Failed to load borrowed books: ${err.message}`);
     } finally {
       setLoading(false);
     }

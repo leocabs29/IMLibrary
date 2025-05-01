@@ -461,6 +461,7 @@ router.get("/reservations", async (req, res) => {
 
 
 
+
 router.put("/reservations/accept", async (req, res) => {
   const { bookId, userId } = req.body;
 
@@ -481,24 +482,22 @@ router.put("/reservations/accept", async (req, res) => {
     // Start transaction
     await connection.execute("BEGIN NULL; END;");
 
-    // 1. Update the STATUS_ID in the BOOKS table
-    await connection.execute(
-      `UPDATE BOOKS
-       SET STATUS_ID = 7
-       WHERE BOOK_ID = :bookId`,
-      { bookId },
-      { autoCommit: false }
-    );
+    // 1. Update the STATUS_ID in the BOOKS table to 4 (Accepted)
+    const updateBooksQuery = `
+      UPDATE BOOKS
+      SET STATUS_ID = 4
+      WHERE BOOK_ID = :bookId
+    `;
+    await connection.execute(updateBooksQuery, { bookId });
 
     // 2. Insert BORROW_DATE and DUE_DATE into BORROWED_BOOKS table
-    await connection.execute(
-      `UPDATE BORROWED_BOOKS
-       SET BORROW_DATE = TO_DATE(:borrowDate, 'YYYY-MM-DD'),
-           DUE_DATE = TO_DATE(:dueDate, 'YYYY-MM-DD')
-       WHERE BOOK_ID = :bookId AND USER_ID = :userId`,
-      { bookId, userId, borrowDate, dueDate },
-      { autoCommit: false }
-    );
+    const updateBorrowedBooksQuery = `
+      UPDATE BORROWED_BOOKS
+      SET BORROW_DATE = TO_DATE(:borrowDate, 'YYYY-MM-DD'),
+          DUE_DATE = TO_DATE(:dueDate, 'YYYY-MM-DD')
+      WHERE BOOK_ID = :bookId AND USER_ID = :userId
+    `;
+    await connection.execute(updateBorrowedBooksQuery, { bookId, userId, borrowDate, dueDate });
 
     // Commit the transaction
     await connection.commit();
@@ -514,6 +513,7 @@ router.put("/reservations/accept", async (req, res) => {
     }
   }
 });
+
 
 
 

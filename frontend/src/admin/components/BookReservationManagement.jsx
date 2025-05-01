@@ -7,10 +7,10 @@ function BookReservationManagement() {
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-
+  const [message, setMessage] = useState("");
   const [availableUsers, setAvailableUsers] = useState([]);
   const [availableBooks, setAvailableBooks] = useState([]);
-
+  const [bookId, setBookId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -50,7 +50,7 @@ function BookReservationManagement() {
         }
         const data = await response.json();
         setReservations(data); // Make sure data is formatted correctly
-        console.log(data);
+        console.log("asdsad" + data);
       } catch (err) {
         setError(err.message);
         console.error("Error fetching reservations:", err);
@@ -62,37 +62,40 @@ function BookReservationManagement() {
     fetchReservations();
   }, []);
 
-  const handleAcceptBook = async (bookId, newStatus) => {
-    if (newStatus === "accepted") {
-      const userId = localStorage.getItem("user_id");
+  const handleAccept = async (userId, bookId) => {
+    console.log(`Attempting to accept reservation for User ID: ${userId}, Book ID: ${bookId}`);
   
-      if (!userId) {
-        console.error("User is not logged in.");
-        return;
+    if (!userId || !bookId) {
+      setMessage("Missing user ID or book ID.");
+      return;
+    }
+  
+    try {
+      const response = await fetch('http://localhost:3000/books/reservations/accept', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,  // Sending userId as a parameter
+          bookId,  // Sending bookId as a parameter
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to accept reservation');
       }
   
-      try {
-        const response = await fetch("http://localhost:3000/books/reservations/accept", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ bookId, userId })
-        });
-  
-        if (!response.ok) {
-          throw new Error("Failed to accept reservation.");
-        }
-  
-        const result = await response.json();
-        console.log(result.message); // Log the success message from the server
-  
-        // Optionally re-fetch reservations or update the UI
-      } catch (error) {
-        console.error("Failed to accept reservation:", error.message);
-      }
+      const data = await response.json();
+      console.log("Reservation accepted:", data);
+      setMessage(data.message || 'Reservation accepted');
+    } catch (error) {
+      console.error("Error:", error);
+      setMessage(error.message || 'Something went wrong.');
     }
   };
+  
+  
   
   
 
@@ -338,7 +341,7 @@ function BookReservationManagement() {
         {/* Reservation Date */}
         <td className="px-6 py-4 whitespace-nowrap">
           {reservation[8] !== "pending_processing" && reservation[8] !== "available" ? (
-            <div className="text-sm text-gray-500">{formatDate(reservation[4])}</div>
+            <div className="text-sm text-gray-500">{formatDate(reservation[5])}</div>
           ) : (
             <div className="text-sm text-gray-500 italic">Not set</div>
           )}
@@ -348,7 +351,7 @@ function BookReservationManagement() {
         <td className="px-6 py-4 whitespace-nowrap">
           {reservation[8] !== "pending_processing" && reservation[8] !== "available" ? (
             <>
-              <div className="text-sm text-gray-900">{formatDate(reservation[5])}</div>
+              <div className="text-sm text-gray-900">{formatDate(reservation[6])}</div>
               {reservation[6] !== "returned" && reservation[6] !== "cancelled" && (
                 <div
                   className={`text-xs ${
@@ -357,7 +360,7 @@ function BookReservationManagement() {
                       : "text-gray-500"
                   }`}
                 >
-                  {calculateDaysRemaining(reservation[5])}
+                  {calculateDaysRemaining(reservation[6])}
                 </div>
               )}
             </>
@@ -390,7 +393,7 @@ function BookReservationManagement() {
 
           {(reservation[8] === "pending_processing" || reservation[8] === "available") && (
             <button
-            onClick={() => handleAcceptBook(reservation[0], "accepted")}
+            onClick={() => handleAccept(reservation[4], reservation[1])}
 
               className="text-blue-600 hover:text-blue-900 mr-3"
             >
