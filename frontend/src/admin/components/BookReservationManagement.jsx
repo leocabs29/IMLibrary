@@ -10,7 +10,7 @@ function BookReservationManagement() {
   const [message, setMessage] = useState("");
   const [availableUsers, setAvailableUsers] = useState([]);
   const [availableBooks, setAvailableBooks] = useState([]);
-  const [bookId, setBookId] = useState('');
+  const [bookId, setBookId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -63,41 +63,81 @@ function BookReservationManagement() {
   }, []);
 
   const handleAccept = async (userId, bookId) => {
-    console.log(`Attempting to accept reservation for User ID: ${userId}, Book ID: ${bookId}`);
-  
+    console.log(
+      `Attempting to accept reservation for User ID: ${userId}, Book ID: ${bookId}`
+    );
+
     if (!userId || !bookId) {
       setMessage("Missing user ID or book ID.");
       return;
     }
-  
+
     try {
-      const response = await fetch('http://localhost:3000/books/reservations/accept', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,  // Sending userId as a parameter
-          bookId,  // Sending bookId as a parameter
-        }),
-      });
-  
+      const response = await fetch(
+        "http://localhost:3000/books/reservations/accept",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId, // Sending userId as a parameter
+            bookId, // Sending bookId as a parameter
+          }),
+        }
+      );
+
       if (!response.ok) {
-        throw new Error('Failed to accept reservation');
+        throw new Error("Failed to accept reservation");
       }
-  
+
       const data = await response.json();
       console.log("Reservation accepted:", data);
-      setMessage(data.message || 'Reservation accepted');
+      setMessage(data.message || "Reservation accepted");
     } catch (error) {
       console.error("Error:", error);
-      setMessage(error.message || 'Something went wrong.');
+      setMessage(error.message || "Something went wrong.");
     }
   };
+
   
-  
-  
-  
+  const handleClaim = async (userId, bookId) => {
+    console.log(
+      `Attempting to accept reservation for User ID: ${userId}, Book ID: ${bookId}`
+    );
+
+    if (!userId || !bookId) {
+      setMessage("Missing user ID or book ID.");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "http://localhost:3000/books/reservations/claim",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId, // Sending userId as a parameter
+            bookId, // Sending bookId as a parameter
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to accept reservation");
+      }
+
+      const data = await response.json();
+      console.log("Reservation accepted:", data);
+      setMessage(data.message || "Reservation accepted");
+    } catch (error) {
+      console.error("Error:", error);
+      setMessage(error.message || "Something went wrong.");
+    }
+  };
 
   const mappedReservations = reservations.map((res) => ({
     bookTitle: res.title, // Update with actual API response fields
@@ -314,106 +354,153 @@ function BookReservationManagement() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-  {reservations.length > 0 ? (
-    reservations.map((reservation) => (
-      <tr key={reservation[0]} className="hover:bg-gray-50">
-        <td className="px-6 py-4 whitespace-nowrap">
-          <div className="flex items-center">
-            <div className="flex-shrink-0 h-10 w-10">
-              <div className="h-10 w-10 rounded bg-gray-200 flex items-center justify-center text-gray-500 font-semibold">
-                {reservation[0]}
-              </div>
-            </div>
-            <div className="ml-4">
-              <div className="text-sm font-medium text-gray-900">
-                {reservation[2]}
-              </div>
-              <div className="text-sm text-gray-500">ID: {reservation[1]}</div>
-            </div>
-          </div>
-        </td>
+            {reservations.length > 0 ? (
+              reservations.map((reservation) => (
+                <tr key={reservation[0]} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded bg-gray-200 flex items-center justify-center text-gray-500 font-semibold">
+                          {reservation[0]}
+                        </div>
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {reservation[2]}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          ID: {reservation[1]}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
 
-        <td className="px-6 py-4 whitespace-nowrap">
-          <div className="text-sm font-medium text-gray-900">{reservation[3]}</div>
-          <div className="text-sm text-gray-500">ID: {reservation[4]}</div>
-        </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">
+                      {reservation[3]}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      ID: {reservation[4]}
+                    </div>
+                  </td>
 
-        {/* Reservation Date */}
-        <td className="px-6 py-4 whitespace-nowrap">
-          {reservation[8] !== "pending_processing" && reservation[8] !== "available" ? (
-            <div className="text-sm text-gray-500">{formatDate(reservation[5])}</div>
-          ) : (
-            <div className="text-sm text-gray-500 italic">Not set</div>
-          )}
-        </td>
+                  {/* Reservation Date */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {reservation[8] === "borrowed" ||
+                    reservation[8] === "overdue" ||
+                    reservation[8] === "returned" ? (
+                      <div className="text-sm text-gray-500">
+                        {formatDate(reservation[5])}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500 italic">
+                        Not set
+                      </div>
+                    )}
+                  </td>
 
-        {/* Due Date */}
-        <td className="px-6 py-4 whitespace-nowrap">
-          {reservation[8] !== "pending_processing" && reservation[8] !== "available" ? (
-            <>
-              <div className="text-sm text-gray-900">{formatDate(reservation[6])}</div>
-              {reservation[6] !== "returned" && reservation[6] !== "cancelled" && (
-                <div
-                  className={`text-xs ${
-                    new Date(reservation[5]) < new Date()
-                      ? "text-red-600"
-                      : "text-gray-500"
-                  }`}
+                  {/* Due Date - Only show if status is borrowed, overdue, or returned */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {reservation[8] === "borrowed" ||
+                    reservation[8] === "overdue" ||
+                    reservation[8] === "returned" ? (
+                      <>
+                        <div className="text-sm text-gray-900">
+                          {formatDate(reservation[6])}
+                        </div>
+                        {reservation[8] !== "returned" &&
+                          reservation[8] !== "cancelled" && (
+                            <div
+                              className={`text-xs ${
+                                new Date(reservation[6]) < new Date()
+                                  ? "text-red-600"
+                                  : "text-gray-500"
+                              }`}
+                            >
+                              {calculateDaysRemaining(reservation[6])}
+                            </div>
+                          )}
+                      </>
+                    ) : (
+                      <div className="text-sm text-gray-500 italic">
+                        Not set
+                      </div>
+                    )}
+                  </td>
+
+                  {/* Status */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClassName(
+                        reservation[8]
+                      )}`}
+                    >
+                      {reservation[8] === "available"
+                        ? "requested"
+                        : reservation[8]}
+                    </span>
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    {(reservation[8] === "overdue" ||
+                      reservation[8] === "borrowed") && (
+                      <button
+                        onClick={() =>
+                          handleUpdateStatus(reservation.id, "returned")
+                        }
+                        className="text-green-600 hover:text-green-900 mr-3"
+                      >
+                        Return
+                      </button>
+                    )}
+
+                    {(reservation[8] === "pending_processing" ||
+                      reservation[8] === "available") && (
+                      <button
+                        onClick={() =>
+                          handleAccept(reservation[4], reservation[1])
+                        }
+                        className="text-blue-600 hover:text-blue-900 mr-3"
+                      >
+                        Accept
+                      </button>
+                    )}
+
+                    {reservation[8] === "ready_to_claim" && (
+                      <button
+                        onClick={() =>
+                          handleClaim(reservation[4], reservation[1])
+                        }
+                        className="text-purple-600 hover:text-purple-900 mr-3"
+                      >
+                        Claim
+                      </button>
+                    )}
+                    {reservation[8] === "accepted" && (
+                      <button
+                        onClick={() =>
+                          handleClaim(reservation[4], reservation[1])
+                        }
+                        className="text-purple-600 hover:text-purple-900 mr-3"
+                      >
+                        Ready to Claim
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan="6"
+                  className="px-6 py-4 text-center text-sm text-gray-500"
                 >
-                  {calculateDaysRemaining(reservation[6])}
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="text-sm text-gray-500 italic">Not set</div>
-          )}
-        </td>
-
-        {/* Status */}
-        <td className="px-6 py-4 whitespace-nowrap">
-          <span
-            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClassName(
-              reservation[8]
-            )}`}
-          >
-            {reservation[8] === "available" ? "requested" : reservation[8]}
-          </span>
-        </td>
-
-        {/* Actions */}
-        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-          {(reservation[8] === "overdue" || reservation[8] === "borrowed") && (
-            <button
-              onClick={() => handleUpdateStatus(reservation.id, "returned")}
-              className="text-green-600 hover:text-green-900 mr-3"
-            >
-              Return
-            </button>
-          )}
-
-          {(reservation[8] === "pending_processing" || reservation[8] === "available") && (
-            <button
-            onClick={() => handleAccept(reservation[4], reservation[1])}
-
-              className="text-blue-600 hover:text-blue-900 mr-3"
-            >
-              Accept
-            </button>
-          )}
-        </td>
-      </tr>
-    ))
-  ) : (
-    <tr>
-      <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
-        No reservations found matching your search criteria
-      </td>
-    </tr>
-  )}
-</tbody>
-
-
-
+                  No reservations found matching your search criteria
+                </td>
+              </tr>
+            )}
+          </tbody>
         </table>
       </div>
 

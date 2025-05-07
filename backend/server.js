@@ -2,20 +2,25 @@ const express = require('express');
 const app = express();
 const booksRouter = require('./routes/booksRoute');
 const usersRouter = require('./routes/userRoutes');
-const cors = require('cors');  // Import cors
-app.use(cors());  // Enable CORS
+const cors = require('cors');
+
+// Middleware
+app.use(cors());
 app.use(express.json());
 
-// Default root route
+// Routes
+app.get('/', (req, res) => {
+  res.send('Welcome to the Library API!');
+});
 
-
-// Route for /books
-app.use('/books', booksRouter);
-app.use('/add-book', booksRouter);
-
-// Route for /users
+app.use('/books', booksRouter); // This should handle all book-related routes
 app.use('/users', usersRouter);
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Something broke!');
+});
 
 const PORT = 3000;
 app.listen(PORT, () => {

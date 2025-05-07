@@ -9,24 +9,28 @@ router.get("/", async (req, res) => {
   try {
     connection = await db.getConnection();
     const result = await connection.execute(`
-
-      SELECT 
+SELECT 
+      B.BOOK_ID,
       B.TITLE,
       B.AUTHOR,
       C.CATEGORY_NAME,
       B.ISBN,
       B.PUBLICATION_YEAR,
       COUNT(*) AS total_copies,
-      SUM(CASE WHEN S.STATUS_ID NOT IN (4, 7 ) THEN 1 ELSE 0 END) AS available_copies
+      SUM(CASE WHEN S.STATUS_ID NOT IN (4, 7 ) THEN 1 ELSE 0 END) AS available_copies,
+      LB.BRANCH_NAME
     FROM BOOKS B
     JOIN CATEGORY C ON B.CATEGORY_ID = C.CATEGORY_ID
     JOIN BOOK_STATUS S ON S.STATUS_ID = B.STATUS_ID
+    JOIN LIBRARY_BRANCHES LB ON LB.BRANCH_ID = B.BRANCH_ID
     GROUP BY 
+    B.BOOK_ID,
       B.TITLE,
       B.AUTHOR,
       C.CATEGORY_NAME,
       B.ISBN,
-      B.PUBLICATION_YEAR
+      B.PUBLICATION_YEAR,
+      LB.BRANCH_NAME
     ORDER BY B.TITLE
 `);
     res.json(result.rows);
@@ -53,7 +57,7 @@ SELECT
       B.AUTHOR,
       C.CATEGORY_NAME,
       B.ISBN,
-      B.PUBLICATION_YEAR,
+      B.PUBLICATION_YEAR, 
       COUNT(*) AS total_copies,
       SUM(CASE WHEN S.STATUS_ID NOT IN (4, 7) THEN 1 ELSE 0 END) AS available_copies,
       LB.BRANCH_NAME
@@ -437,11 +441,14 @@ router.get("/reservations", async (req, res) => {
       `SELECT 
          B.TITLE, 
          S.STATUS_NAME, 
-         LB.BRANCH_NAME
+         LB.BRANCH_NAME,
+         B.BOOK_ID,
+         BR.BORROWED_ID
        FROM BOOKS B
        JOIN BOOK_STATUS S ON B.STATUS_ID = S.STATUS_ID
        JOIN LIBRARY_BRANCHES LB ON LB.BRANCH_ID = B.BRANCH_ID
-       WHERE S.STATUS_ID IN ( 2, 3)`
+       JOIN BORROWED_BOOKS BR  ON BR.BOOK_ID = B.BOOK_ID
+       `
     );
 
     if (result.rows && result.rows.length > 0) {
@@ -463,6 +470,55 @@ router.get("/reservations", async (req, res) => {
 
 
 router.put("/reservations/accept", async (req, res) => {
+  const { bookId, userId } = req.body;
+
+  if (!bookId || !userId) {
+    return res.status(400).json({ error: "Missing bookId or userId in request body" });
+  }
+
+  let connection;
+
+  try {
+    connection = await db.getConnection();
+
+    // Start transaction
+    await connection.execute("BEGIN NULL; END;");
+
+    // 1. Update the STATUS_ID in the BOOKS table to 3 (Accepted)
+    const updateBooksQuery = `
+      UPDATE BOOKS
+      SET STATUS_ID = 3
+      WHERE BOOK_ID = :bookId
+    `;
+    await connection.execute(updateBooksQuery, { bookId });
+
+    // 2. Set BORROW_DATE and DUE_DATE to NULL in BORROWED_BOOKS table
+    const updateBorrowedBooksQuery = `
+      UPDATE BORROWED_BOOKS
+      SET BORROW_DATE = NULL,
+          DUE_DATE = NULL
+      WHERE BOOK_ID = :bookId AND USER_ID = :userId
+    `;
+    await connection.execute(updateBorrowedBooksQuery, { bookId, userId });
+
+    // Commit the transaction
+    await connection.commit();
+
+    res.status(200).json({ message: "Reservation accepted without setting borrow/due dates." });
+  } catch (err) {
+    if (connection) await connection.rollback();
+    console.error("Error processing reservation:", err);
+    res.status(500).json({ error: "Failed to accept reservation", details: err.message });
+  } finally {
+    if (connection) {
+      await connection.close();
+    }
+  }
+});
+
+
+
+router.put("/reservations/claim", async (req, res) => {
   const { bookId, userId } = req.body;
 
   if (!bookId || !userId) {
@@ -516,6 +572,58 @@ router.put("/reservations/accept", async (req, res) => {
 
 
 
+router.put("/reservations/return", async (req, res) => {
+  const { bookId, userId } = req.body;
+
+  if (!bookId || !userId) {
+    return res.status(400).json({ error: "Missing bookId or userId in request body" });
+  }
+
+  let connection;
+
+  try {
+    connection = await db.getConnection();
+
+    // Calculate dates
+    const today = new Date();
+    const borrowDate = today.toISOString().slice(0, 10); // YYYY-MM-DD
+    const dueDate = new Date(today.setDate(today.getDate() + 7)).toISOString().slice(0, 10);
+
+    // Start transaction
+    await connection.execute("BEGIN NULL; END;");
+
+    // 1. Update the STATUS_ID in the BOOKS table to 4 (Accepted)
+    const updateBooksQuery = `
+      UPDATE BOOKS
+      SET STATUS_ID = 8
+      WHERE BOOK_ID = :bookId
+    `;
+    await connection.execute(updateBooksQuery, { bookId });
+
+    // 2. Insert BORROW_DATE and DUE_DATE into BORROWED_BOOKS table
+    const updateBorrowedBooksQuery = `
+      UPDATE BORROWED_BOOKS
+      SET BORROW_DATE = NULL,
+          DUE_DATE = NULL
+      WHERE BOOK_ID = :bookId AND USER_ID = :userId
+    `;
+    await connection.execute(updateBorrowedBooksQuery, { bookId, userId, borrowDate, dueDate });
+
+    // Commit the transaction
+    await connection.commit();
+
+    res.status(200).json({ message: "Reservation accepted with borrow and due date set." });
+  } catch (err) {
+    if (connection) await connection.rollback();
+    console.error("Error processing reservation:", err);
+    res.status(500).json({ error: "Failed to accept reservation", details: err.message });
+  } finally {
+    if (connection) {
+      await connection.close();
+    }
+  }
+});
+
 
 
 // POST /borrowed_book/:bookId
@@ -564,5 +672,64 @@ router.post('/borrowed_book/:bookId', async (req, res) => {
     }
   }
 });
+
+
+router.delete('/cancel', async (req, res) => {
+  const { bookId } = req.body;
+
+  console.log("Received request to cancel reservation with bookId:", bookId);
+
+  if (!bookId || typeof bookId !== 'number') {
+    return res.status(400).json({ message: 'Invalid or missing bookId' });
+  }
+
+  let connection;
+  try {
+    connection = await getConnection(); // Assuming you have a connection pool
+    await connection.beginTransaction(); // Start transaction
+
+    // 1. Delete from BORROWED_BOOKS
+    const deleteResult = await connection.execute(
+      `DELETE FROM BORROWED_BOOKS WHERE BOOK_ID = :bookId`,
+      [bookId],
+      { autoCommit: false } // Disable autocommit for transaction
+    );
+
+    if (deleteResult.rowsAffected === 0) {
+      await connection.rollback();
+      return res.status(404).json({ message: 'No matching reservation found' });
+    }
+
+    // 2. Update status in BOOKS
+    await connection.execute(
+      `UPDATE BOOKS SET BOOK_STATUS = 8 WHERE BOOK_ID = :bookId`,
+      [bookId],
+      { autoCommit: false }
+    );
+
+    await connection.commit(); // Commit both operations
+    res.status(200).json({ message: 'Reservation cancelled and book status updated.' });
+
+  } catch (err) {
+    console.error("Error in cancellation process:", err);
+    if (connection) await connection.rollback(); // Rollback on error
+    res.status(500).json({ 
+      message: 'Failed to cancel reservation',
+      error: err.message 
+    });
+  } finally {
+    if (connection) {
+      try {
+        await connection.close(); // Release connection
+      } catch (err) {
+        console.error("Error closing connection:", err);
+      }
+    }
+  }
+});
+
+
+
+
 
 module.exports = router;

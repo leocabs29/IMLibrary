@@ -69,7 +69,7 @@ router.get("/count-users", async (req, res) => {
 
     // Query to count all borrowed books with status_id 4 or 7 in the 'borrowed_books' table
     const result = await connection.execute(
-      `SELECT COUNT(*) AS users_count FROM users`
+      `SELECT COUNT(*) AS users_count FROM users where role_id = 2`
     );
 
     // Log the result to check its structure

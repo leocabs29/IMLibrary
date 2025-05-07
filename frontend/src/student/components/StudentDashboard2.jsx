@@ -171,7 +171,7 @@ function StudentDashboard2() {
 
   const fetchBooks = async () => {
     try {
-      const response = await fetch("http://localhost:3000/books/get");
+      const response = await fetch("http://localhost:3000/books/");
       if (!response.ok) {
         throw new Error(`Failed to fetch books: ${response.status}`);
       }
@@ -183,9 +183,6 @@ function StudentDashboard2() {
       setLoading(false);
     }
   };
-
-  
-  
 
   const fetchReservations = async () => {
     try {
@@ -202,21 +199,25 @@ function StudentDashboard2() {
       setLoading(false);
     }
   };
+
   const handleBorrowBook = async (book) => {
-    const bookId = book[0];  // Assuming book[0] is the book ID
+    const bookId = book[0]; // Assuming book[0] is the book ID
     const userId = localStorage.getItem("user_id");
-  
+
     try {
-      const response = await fetch(`http://localhost:3000/books/borrowed_book/${bookId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ user_id: userId }),  // Send the user_id from localStorage
-      });
-  
+      const response = await fetch(
+        `http://localhost:3000/books/borrowed_book/${bookId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ user_id: userId }), // Send the user_id from localStorage
+        }
+      );
+
       const data = await response.json();
-  
+
       if (response.ok) {
         alert(data.message || "Book borrow request submitted.");
         // Optionally, update UI, e.g., refresh the book list
@@ -228,7 +229,37 @@ function StudentDashboard2() {
       alert("Failed to borrow the book.");
     }
   };
-  
+
+  const handleCancelReservation = async (bookId, borrowedId) => {
+    try {
+      setLoading(true);
+
+      // Send the bookId to the backend for cancellation
+      const response = await fetch("http://localhost:3000/delete-book/cancel", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ bookId, borrowedId }), // Send only the bookId
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to cancel");
+      }
+
+      // After successful cancellation, refresh the reservations list
+      const updated = await fetchReservations();
+      setReservations(updated);
+
+      toast.success("Reservation cancelled!");
+    } catch (error) {
+      toast.error(error.message);
+      console.error("Cancellation error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchUserById();
@@ -702,7 +733,7 @@ function StudentDashboard2() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right">
                             <button
-                               onClick={() => handleBorrowBook(book)}  // Add the handler here
+                              onClick={() => handleBorrowBook(book)} // Add the handler here
                               className="text-blue-600 hover:text-blue-900 mr-3"
                               disabled={loading}
                             >
@@ -922,111 +953,129 @@ function StudentDashboard2() {
               </div>
             </div>
           )}
-         {activeMenu === "Reservations" && (
-  <div className="bg-white rounded-lg shadow p-6">
-    <h2 className="text-xl font-semibold mb-4">Book Reservations</h2>
-    <p className="text-gray-600 mb-6">
-      Manage your book reservations across all campuses.
-    </p>
 
-    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-      <div className="flex">
-        <div className="flex-shrink-0">
-          <svg
-            className="h-5 w-5 text-yellow-400"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path
-              fillRule="evenodd"
-              d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </div>
-        <div className="ml-3">
-          <p className="text-sm text-yellow-700">
-            You have 1 book ready for pickup at {activeCampus} Campus. Please collect it by May 1, 2025.
-          </p>
-        </div>
-      </div>
-    </div>
+          {activeMenu === "Reservations" && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">Book Reservations</h2>
+              <p className="text-gray-600 mb-6">
+                Manage your book reservations across all campuses.
+              </p>
 
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Book Title
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Status
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Campus
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Date
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {reservations && reservations.length > 0 ? (
-            reservations.map((reservation, index) => (
-              <tr key={index}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {reservation[0]} {/* Book Title */}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                    {reservation[1]} {/* Status */}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {reservation[2]} {/* Campus */}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  April 28, 2025 {/* You can replace this with the actual date if available */}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button className="text-blue-600 hover:text-blue-900">
-                    Cancel
-                  </button>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
-                No reservations found
-              </td>
-            </tr>
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-5 w-5 text-yellow-400"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-yellow-700">
+                      You have 1 book ready for pickup at {activeCampus} Campus.
+                      Please collect it by May 1, 2025.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Book Title
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Status
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Campus
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Date
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {reservations && reservations.length > 0 ? (
+                      reservations
+                        .filter((reservation) => reservation[1] !== "borrowed") // 👈 Filter out "borrowed"
+                        .map((reservation, index) => (
+                          <tr key={index}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {reservation[0]} {/* Book Title */}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                {reservation[1] === "available"
+                                  ? "pending processing"
+                                  : reservation[1] === "ready_to_claim"
+                                  ? "accepted"
+                                  : "other statusSSD"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {reservation[2]} {/* Campus */}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              April 28, 2025
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <button
+                                onClick={() =>
+                                  handleCancelReservation(
+                                    reservation[3],
+                                    reservation[0]
+                                  )
+                                }
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                Cancel
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan="5"
+                          className="px-6 py-4 text-center text-sm text-gray-500"
+                        >
+                          No reservations found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
-        </tbody>
-      </table>
-    </div>
-  </div>
-)}
-
 
           {activeMenu === "Help & FAQs" && (
             <div className="bg-white rounded-lg shadow">
