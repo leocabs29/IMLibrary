@@ -16,10 +16,6 @@ function StudentDashboard2() {
   const [currentPage, setCurrentPage] = useState(1);
   const [booksPerPage, setBooksPerPage] = useState(10);
   const [reservations, setReservations] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedCampus, setSelectedCampus] = useState("All Campuses");
-
   // Derived values
   const totalPages = Math.ceil(books.length / booksPerPage);
 
@@ -30,7 +26,7 @@ function StudentDashboard2() {
 
   // Pagination handlers
   const handlePageChange = (pageNumber) => {
-    const totalPages = Math.ceil(getFilteredBooks().length / booksPerPage);
+    // Make sure the page number is within valid range
     if (pageNumber >= 1 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
     }
@@ -38,7 +34,8 @@ function StudentDashboard2() {
 
   const handleBooksPerPageChange = (newBooksPerPage) => {
     setBooksPerPage(newBooksPerPage);
-    setCurrentPage(1); // Reset to first page when changing items per page
+    // Reset to page 1 when changing items per page
+    setCurrentPage(1);
   };
 
   // Helper function to determine which page numbers to show
@@ -61,37 +58,6 @@ function StudentDashboard2() {
     // Otherwise show current page and 2 pages on each side
     return [current - 2, current - 1, current, current + 1, current + 2];
   };
-
-  // Add getPageNumbers function
-  const getPageNumbers = () => {
-    const totalPages = Math.ceil(getFilteredBooks().length / booksPerPage);
-    if (totalPages <= 5) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
-    
-    if (currentPage <= 3) {
-      return [1, 2, 3, 4, 5];
-    }
-    
-    if (currentPage >= totalPages - 2) {
-      return [
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-        totalPages,
-      ];
-    }
-    
-    return [
-      currentPage - 2,
-      currentPage - 1,
-      currentPage,
-      currentPage + 1,
-      currentPage + 2,
-    ];
-  };
-
   const columns = [
     { field: "title", label: "Title" },
     { field: "author", label: "Author" },
@@ -235,7 +201,7 @@ function StudentDashboard2() {
   };
 
   const handleBorrowBook = async (book) => {
-    const bookId = book[0];
+    const bookId = book[0]; // Assuming book[0] is the book ID
     const userId = localStorage.getItem("user_id");
 
     try {
@@ -246,31 +212,21 @@ function StudentDashboard2() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ user_id: userId }),
+          body: JSON.stringify({ user_id: userId }), // Send the user_id from localStorage
         }
       );
 
       const data = await response.json();
 
       if (response.ok) {
-        // Update the local state to reflect the change
-        setBooks(prevBooks =>
-          prevBooks.map(b =>
-            b[0] === bookId
-              ? [...b.slice(0, 6), (parseInt(b[6] || 0) - 1).toString(), "borrowed", ...b.slice(8)]
-              : b
-          )
-        );
-        toast.success(data.message || "Book borrow request submitted successfully.");
-        // Refresh the borrowed books and book count
-        fetchBorrowedBooks();
-        fetchBorrowedBooksCount();
+        alert(data.message || "Book borrow request submitted.");
+        // Optionally, update UI, e.g., refresh the book list
       } else {
-        toast.error(data.error || "Failed to submit borrow request.");
+        alert(data.error || "Failed to submit borrow request.");
       }
     } catch (error) {
       console.error("Error borrowing book:", error);
-      toast.error("Failed to borrow the book.");
+      alert("Failed to borrow the book.");
     }
   };
 
@@ -278,7 +234,7 @@ function StudentDashboard2() {
     try {
       setLoading(true);
       console.log("Attempting to cancel reservation:", { bookId, borrowedId });
-  
+
       const response = await fetch("http://localhost:3000/books/cancel", {
         method: "DELETE",
         headers: {
@@ -286,79 +242,29 @@ function StudentDashboard2() {
         },
         body: JSON.stringify({
           bookId: Number(bookId),
-          borrowedId: Number(borrowedId)
+          borrowedId: Number(borrowedId),
         }),
       });
-  
+
       const result = await response.json();
-  
+
       if (!response.ok) {
         throw new Error(result.error || "Failed to cancel reservation");
       }
-  
+
       // Refresh the reservations list after successful cancellation
       const updatedReservations = await fetchReservations();
-      setReservations(updatedReservations.filter(res => 
-        !(res[3] === bookId && res[4] === borrowedId)
-      ));
-  
+      setReservations(
+        updatedReservations.filter(
+          (res) => !(res[3] === bookId && res[4] === borrowedId)
+        )
+      );
+
       toast.success(result.message || "Reservation cancelled successfully!");
-      
     } catch (error) {
-    
     } finally {
       setLoading(false);
     }
-  };
-
-  // Update campuses array
-  const campuses = ["San Bartolome", "Batasan Hills", "San Francisco"];
-
-  // Update getFilteredBooks function to handle pagination properly
-  const getFilteredBooks = () => {
-    return books.filter((book) => {
-      const matchesSearch = 
-        book[1]?.toLowerCase().includes(searchQuery.toLowerCase()) || // title
-        book[2]?.toLowerCase().includes(searchQuery.toLowerCase()) || // author
-        book[3]?.toLowerCase().includes(searchQuery.toLowerCase());   // category
-      
-      const matchesCategory = !selectedCategory || book[3] === selectedCategory;
-      const matchesCampus = selectedCampus === "All Campuses" || book[8] === selectedCampus;
-
-      return matchesSearch && matchesCategory && matchesCampus;
-    });
-  };
-
-  // Add function to check if book is available
-  const isBookAvailable = (book) => {
-    const availableCopies = parseInt(book[6] || 0);
-    return availableCopies > 0 && book[7] !== "borrowed";
-  };
-
-  // Add function to get random books
-  const getRandomBooks = () => {
-    const availableBooks = books.filter(book => isBookAvailable(book));
-    const shuffled = [...availableBooks].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, 3);
-  };
-
-  // Fix the borrowed books count to only count "borrowed" status
-  const getMyBooksCount = () => {
-    return borrowedBooks.filter(book => book[2] === "borrowed").length;
-  };
-
-  // Get filtered borrowed books (excluding pending status)
-  const getFilteredBorrowedBooks = () => {
-    return borrowedBooks.filter(book => book[2] !== "available");
-  };
-
-  // Add functions to count different book statuses
-  const getReadyToClaimCount = () => {
-    return borrowedBooks.filter(book => book[2] === "ready_to_claim").length;
-  };
-
-  const getPendingBooksCount = () => {
-    return borrowedBooks.filter(book => book[2] === "available").length;
   };
 
   useEffect(() => {
@@ -369,11 +275,6 @@ function StudentDashboard2() {
     fetchReservations();
   }, []);
 
-  useEffect(() => {
-    // Reset to page 1 when filters change
-    setCurrentPage(1);
-  }, [searchQuery, selectedCategory, selectedCampus]);
-
   // Menu items for student dashboard
   const menuItems = [
     "Dashboard",
@@ -382,6 +283,9 @@ function StudentDashboard2() {
     "Reservations",
     "Help & FAQs",
   ];
+
+  // Campus options
+  const campuses = ["Main", "Batasan", "San Francisco"];
 
   // Mock events data by campus
   const campusEvents = {
@@ -498,6 +402,28 @@ function StudentDashboard2() {
               {activeMenu}
             </h1>
             <div className="flex items-center space-x-4">
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                  <svg
+                    className="w-5 h-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    ></path>
+                  </svg>
+                </span>
+                <input
+                  type="search"
+                  className="pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Search books..."
+                />
+              </div>
               <button className="p-2 rounded-full bg-gray-100 hover:bg-gray-200">
                 <svg
                   className="w-6 h-6 text-gray-500"
@@ -552,34 +478,25 @@ function StudentDashboard2() {
                     Books Borrowed
                   </h3>
                   <p className="text-3xl font-bold text-gray-800 mt-4">
-                    {getMyBooksCount()}
-                  </p>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Currently borrowed books
+                    {bookCount}
                   </p>
                 </div>
 
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-lg font-medium text-gray-700">
-                    Ready to Pick Up
+                    Reservations
                   </h3>
-                  <p className="text-3xl font-bold text-green-600 mt-4">
-                    {borrowedBooks.filter(book => book[2] === "ready_to_claim").length}
-                  </p>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Books ready for collection
-                  </p>
+                  <p className="text-3xl font-bold text-gray-800 mt-4">1</p>
+                  <p className="text-sm text-gray-500 mt-2">Ready for pickup</p>
                 </div>
 
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-lg font-medium text-gray-700">
-                    In Process
+                    Study Room Hours
                   </h3>
-                  <p className="text-3xl font-bold text-yellow-600 mt-4">
-                    {borrowedBooks.filter(book => book[2] === "available").length}
-                  </p>
+                  <p className="text-3xl font-bold text-gray-800 mt-4">8</p>
                   <p className="text-sm text-gray-500 mt-2">
-                    Pending book requests
+                    Reserved this month
                   </p>
                 </div>
               </div>
@@ -594,7 +511,7 @@ function StudentDashboard2() {
                 <div className="p-6">
                   <ul className="divide-y divide-gray-200">
                     {campusEvents[activeCampus].map((event) => (
-                      <li key={event.id} className="py-4">
+                      <li key={event.id} className="py-4 flex justify-between">
                         <div>
                           <p className="text-sm font-medium text-gray-900">
                             {event.title}
@@ -603,40 +520,31 @@ function StudentDashboard2() {
                             {event.date} at {event.time}
                           </p>
                         </div>
+                        <button className="px-3 py-1 text-xs text-blue-600 font-medium rounded-full border border-blue-600 hover:bg-blue-50">
+                          RSVP
+                        </button>
                       </li>
                     ))}
                   </ul>
                 </div>
               </div>
 
-              {/* Available Books */}
+              {/* Popular Books */}
               <div className="bg-white rounded-lg shadow">
                 <div className="border-b border-gray-200 px-6 py-4">
                   <h2 className="text-lg font-medium text-gray-800">
-                    Available Books You Might Like
+                    Popular at {activeCampus} Campus
                   </h2>
                 </div>
                 <div className="p-6">
                   <ul className="divide-y divide-gray-200">
-                    {getRandomBooks().map((book) => (
-                      <li key={book[0]} className="py-4 flex justify-between items-center">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {book[1]}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            By {book[2]} • {book[8]} Campus
-                          </p>
-                          <p className="text-xs text-gray-400 mt-1">
-                            {book[6]} copies available
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleBorrowBook(book)}
-                          className="px-3 py-1 text-xs text-blue-600 font-medium rounded-full border border-blue-600 hover:bg-blue-50"
-                          disabled={!isBookAvailable(book) || loading}
-                        >
-                          Borrow
+                    {popularBooks[activeCampus].map((book, index) => (
+                      <li key={index} className="py-4 flex justify-between">
+                        <p className="text-sm font-medium text-gray-900">
+                          {book}
+                        </p>
+                        <button className="px-3 py-1 text-xs text-blue-600 font-medium rounded-full border border-blue-600 hover:bg-blue-50">
+                          Reserve
                         </button>
                       </li>
                     ))}
@@ -649,69 +557,59 @@ function StudentDashboard2() {
           {activeMenu === "My Books" && (
             <div className="bg-white rounded-lg shadow">
               <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-medium">My Books</h2>
+                <h2 className="text-lg font-medium">My Borrowed Books</h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
                         Title
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
                         Author
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Campus
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
                         Due Date
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Campus
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {getFilteredBorrowedBooks().length > 0 ? (
-                      getFilteredBorrowedBooks().map((book) => (
-                        <tr key={book[0]}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {book[1]}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {book[3]}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              book[2] === "ready_to_claim"
-                                ? "bg-green-100 text-green-800"
-                                : book[2] === "borrowed"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-gray-100 text-gray-800"
-                            }`}>
-                              {book[2] === "ready_to_claim"
-                                ? "Ready to Claim"
-                                : book[2] === "borrowed"
-                                ? "Borrowed"
-                                : book[2]}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {book[8]}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {book[2] === "borrowed" ? book[6] : "-"}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
-                          No books found
+                    {borrowedBooks.map((book) => (
+                      <tr key={book[0]}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {book[1]}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {book[3]}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(book[6]).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {book[8]}
                         </td>
                       </tr>
-                    )}
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -747,29 +645,23 @@ function StudentDashboard2() {
                       type="search"
                       className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Search by title, author, subject..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
                 </div>
                 <div className="w-full md:w-48">
-                  <select 
-                    className="w-full py-2 px-3 border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                  >
+                  <select className="w-full py-2 px-3 border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     <option value="">All Categories</option>
-                    <option value="Fiction">Fiction</option>
-                    <option value="Non-fiction">Non-Fiction</option>
-                    <option value="Textbooks">Textbooks</option>
-                    <option value="Reference">Reference</option>
+                    <option value="fiction">Fiction</option>
+                    <option value="non-fiction">Non-Fiction</option>
+                    <option value="textbooks">Textbooks</option>
+                    <option value="reference">Reference</option>
                   </select>
                 </div>
                 <div className="w-full md:w-48">
                   <select
                     className="w-full py-2 px-3 border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    value={selectedCampus}
-                    onChange={(e) => setSelectedCampus(e.target.value)}
+                    value={activeCampus}
+                    onChange={(e) => setActiveCampus(e.target.value)}
                   >
                     <option value="All Campuses">All Campuses</option>
                     {campuses.map((campus) => (
@@ -781,6 +673,12 @@ function StudentDashboard2() {
                 </div>
               </div>
 
+              {/* Sample catalog results */}
+              <div className="border-t border-gray-200 pt-4">
+                <p className="text-gray-600 italic">
+                  Search or select a category to browse available books.
+                </p>
+              </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -820,9 +718,10 @@ function StudentDashboard2() {
                           </div>
                         </td>
                       </tr>
-                    ) : getFilteredBooks().length > 0 ? (
-                      getFilteredBooks()
-                        .slice((currentPage - 1) * booksPerPage, currentPage * booksPerPage)
+                    ) : paginatedBooks.filter((book) => book[7] !== 0).length >
+                      0 ? (
+                      paginatedBooks
+                        .filter((book) => book[7] !== 0)
                         .map((book) => (
                           <tr key={book[0]} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -844,25 +743,15 @@ function StudentDashboard2() {
                               {book[8]}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                isBookAvailable(book)
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}>
-                                {isBookAvailable(book) 
-                                  ? `Available (${book[6]} copies)` 
-                                  : "Unavailable"}
-                              </span>
+                              {book[7]}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right">
                               <button
                                 onClick={() => handleBorrowBook(book)}
-                                className={`text-blue-600 hover:text-blue-900 mr-3 ${
-                                  !isBookAvailable(book) ? "opacity-50 cursor-not-allowed" : ""
-                                }`}
-                                disabled={!isBookAvailable(book) || loading}
+                                className="text-blue-600 hover:text-blue-900 mr-3"
+                                disabled={loading}
                               >
-                                {isBookAvailable(book) ? "Borrow" : "Unavailable"}
+                                Borrow
                               </button>
                             </td>
                           </tr>
@@ -896,9 +785,9 @@ function StudentDashboard2() {
                     </button>
                     <button
                       onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === Math.ceil(getFilteredBooks().length / booksPerPage)}
+                      disabled={currentPage === totalPages}
                       className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
-                        currentPage === Math.ceil(getFilteredBooks().length / booksPerPage)
+                        currentPage === totalPages
                           ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                           : "bg-white text-gray-700 hover:bg-gray-50"
                       }`}
@@ -911,36 +800,168 @@ function StudentDashboard2() {
                       <p className="text-sm text-gray-700">
                         Showing{" "}
                         <span className="font-medium">
-                          {getFilteredBooks().length > 0
+                          {books.length > 0
                             ? (currentPage - 1) * booksPerPage + 1
                             : 0}
                         </span>{" "}
                         to{" "}
                         <span className="font-medium">
-                          {Math.min(currentPage * booksPerPage, getFilteredBooks().length)}
+                          {Math.min(currentPage * booksPerPage, books.length)}
                         </span>{" "}
-                        of{" "}
-                        <span className="font-medium">{getFilteredBooks().length}</span>{" "}
+                        of <span className="font-medium">{books.length}</span>{" "}
                         results
                       </p>
                     </div>
                     <div>
-                      <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                        {getPageNumbers().map((pageNum) => (
-                          <button
-                            key={pageNum}
-                            onClick={() => handlePageChange(pageNum)}
-                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                              currentPage === pageNum
-                                ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
-                                : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
-                            }`}
+                      <nav
+                        className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                        aria-label="Pagination"
+                      >
+                        <button
+                          onClick={() => handlePageChange(1)}
+                          disabled={currentPage === 1}
+                          className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
+                            currentPage === 1
+                              ? "text-gray-300 cursor-not-allowed"
+                              : "text-gray-500 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="sr-only">First Page</span>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
                           >
-                            {pageNum}
-                          </button>
-                        ))}
+                            <path
+                              fillRule="evenodd"
+                              d="M15.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 010 1.414z"
+                              clipRule="evenodd"
+                            />
+                            <path
+                              fillRule="evenodd"
+                              d="M7.707 15.707a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414l5-5a1 1 0 111.414 1.414L3.414 10l4.293 4.293a1 1 0 010 1.414z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className={`relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium ${
+                            currentPage === 1
+                              ? "text-gray-300 cursor-not-allowed"
+                              : "text-gray-500 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="sr-only">Previous</span>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
+
+                        {/* Page numbers */}
+                        {Array.from(
+                          { length: Math.min(5, totalPages) },
+                          (_, i) => {
+                            const pageNumber = getPageNumbersToShow(
+                              currentPage,
+                              totalPages
+                            )[i];
+                            return (
+                              <button
+                                key={pageNumber}
+                                onClick={() => handlePageChange(pageNumber)}
+                                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                                  currentPage === pageNumber
+                                    ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                                    : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                                }`}
+                              >
+                                {pageNumber}
+                              </button>
+                            );
+                          }
+                        )}
+
+                        <button
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          className={`relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium ${
+                            currentPage === totalPages
+                              ? "text-gray-300 cursor-not-allowed"
+                              : "text-gray-500 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="sr-only">Next</span>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handlePageChange(totalPages)}
+                          disabled={currentPage === totalPages}
+                          className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
+                            currentPage === totalPages
+                              ? "text-gray-300 cursor-not-allowed"
+                              : "text-gray-500 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="sr-only">Last Page</span>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M4.293 15.707a1 1 0 001.414 0l5-5a1 1 0 000-1.414l-5-5a1 1 0 00-1.414 1.414L8.586 10 4.293 14.293a1 1 0 000 1.414z"
+                              clipRule="evenodd"
+                            />
+                            <path
+                              fillRule="evenodd"
+                              d="M12.293 15.707a1 1 0 001.414 0l5-5a1 1 0 000-1.414l-5-5a1 1 0 00-1.414 1.414L16.586 10l-4.293 4.293a1 1 0 000 1.414z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
                       </nav>
                     </div>
+                  </div>
+
+                  {/* Items per page selector */}
+                  <div className="mt-2 sm:mt-0 ml-4">
+                    <select
+                      className="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                      value={booksPerPage}
+                      onChange={(e) =>
+                        handleBooksPerPageChange(Number(e.target.value))
+                      }
+                    >
+                      <option value={5}>5 per page</option>
+                      <option value={10}>10 per page</option>
+                      <option value={25}>25 per page</option>
+                      <option value={50}>50 per page</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -954,49 +975,63 @@ function StudentDashboard2() {
                 Manage your book reservations across all campuses.
               </p>
 
-              {reservations.some(reservation => reservation[1] === "ready_to_claim") && (
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <svg
-                        className="h-5 w-5 text-yellow-400"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-yellow-700">
-                        You have books ready for pickup. Please collect them within 3 days of notification.
-                      </p>
-                    </div>
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-5 w-5 text-yellow-400"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-yellow-700">
+                      You have 1 book ready for pickup at {activeCampus} Campus.
+                      Please collect it by May 1, 2025.
+                    </p>
                   </div>
                 </div>
-              )}
+              </div>
 
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
                         Book Title
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
                         Status
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
                         Campus
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Request Date
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Date
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
                         Actions
                       </th>
                     </tr>
@@ -1006,7 +1041,8 @@ function StudentDashboard2() {
                       reservations
                         .filter((reservation) => reservation[1] !== "borrowed")
                         .map((reservation) => {
-                          const [title, status, campus, bookId, borrowedId] = reservation;
+                          const [title, status, campus, bookId, borrowedId] =
+                            reservation;
                           return (
                             <tr key={borrowedId}>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -1026,18 +1062,21 @@ function StudentDashboard2() {
                                     ? "Pending Processing"
                                     : status === "ready_to_claim"
                                     ? "Ready to Claim"
-                                    : status}
+                                    : "Other Status"}
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {campus}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {new Date().toLocaleDateString()}
+                                April 28, 2025{" "}
+                                {/* Replace with dynamic date if available */}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <button
-                                  onClick={() => handleCancelReservation(bookId, borrowedId)}
+                                  onClick={() =>
+                                    handleCancelReservation(bookId, borrowedId)
+                                  }
                                   className="text-red-600 hover:text-red-900"
                                 >
                                   Cancel
@@ -1048,7 +1087,10 @@ function StudentDashboard2() {
                         })
                     ) : (
                       <tr>
-                        <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
+                        <td
+                          colSpan="5"
+                          className="px-6 py-4 text-center text-sm text-gray-500"
+                        >
                           No reservations found
                         </td>
                       </tr>

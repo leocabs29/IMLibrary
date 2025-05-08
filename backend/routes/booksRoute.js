@@ -250,7 +250,7 @@ JOIN book_status s ON b.status_id = s.status_id
 JOIN borrowed_books bb ON b.book_id = bb.book_id
 JOIN users u ON u.user_id = bb.user_id
 JOIN LIBRARY_BRANCHES LB ON LB.BRANCH_ID = b.BRANCH_ID -- Ensure proper aliasing of b.BRANCH_ID
-WHERE bb.user_id = :userId
+WHERE bb.user_id = :userId AND bb.BORROW_DATE IS NOT NULL
 ORDER BY bb.borrow_date`,
       [userId] // Pass the userId as a parameter to the query
     );
