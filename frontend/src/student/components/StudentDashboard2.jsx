@@ -233,29 +233,35 @@ function StudentDashboard2() {
   const handleCancelReservation = async (bookId, borrowedId) => {
     try {
       setLoading(true);
-
-      // Send the bookId to the backend for cancellation
-      const response = await fetch("http://localhost:3000/delete-book/cancel", {
+      console.log("Attempting to cancel reservation:", { bookId, borrowedId });
+  
+      const response = await fetch("http://localhost:3000/books/cancel", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ bookId, borrowedId }), // Send only the bookId
+        body: JSON.stringify({
+          bookId: Number(bookId),
+          borrowedId: Number(borrowedId)
+        }),
       });
-
+  
+      const result = await response.json();
+  
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to cancel");
+        throw new Error(result.error || "Failed to cancel reservation");
       }
-
-      // After successful cancellation, refresh the reservations list
-      const updated = await fetchReservations();
-      setReservations(updated);
-
-      toast.success("Reservation cancelled!");
+  
+      // Refresh the reservations list after successful cancellation
+      const updatedReservations = await fetchReservations();
+      setReservations(updatedReservations.filter(res => 
+        !(res[3] === bookId && res[4] === borrowedId)
+      ));
+  
+      toast.success(result.message || "Reservation cancelled successfully!");
+      
     } catch (error) {
-      toast.error(error.message);
-      console.error("Cancellation error:", error);
+    
     } finally {
       setLoading(false);
     }
@@ -268,6 +274,7 @@ function StudentDashboard2() {
     fetchBooks();
     fetchReservations();
   }, []);
+
   // Menu items for student dashboard
   const menuItems = [
     "Dashboard",
@@ -1025,42 +1032,52 @@ function StudentDashboard2() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {reservations && reservations.length > 0 ? (
                       reservations
-                        .filter((reservation) => reservation[1] !== "borrowed") // 👈 Filter out "borrowed"
-                        .map((reservation, index) => (
-                          <tr key={index}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {reservation[0]} {/* Book Title */}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                {reservation[1] === "available"
-                                  ? "pending processing"
-                                  : reservation[1] === "ready_to_claim"
-                                  ? "accepted"
-                                  : "other statusSSD"}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {reservation[2]} {/* Campus */}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              April 28, 2025
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <button
-                                onClick={() =>
-                                  handleCancelReservation(
-                                    reservation[3],
-                                    reservation[0]
-                                  )
-                                }
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                Cancel
-                              </button>
-                            </td>
-                          </tr>
-                        ))
+                        .filter((reservation) => reservation[1] !== "borrowed")
+                        .map((reservation) => {
+                          const [title, status, campus, bookId, borrowedId] =
+                            reservation;
+                          return (
+                            <tr key={borrowedId}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {title}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span
+                                  className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                    status === "available"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : status === "ready_to_claim"
+                                      ? "bg-green-100 text-green-800"
+                                      : "bg-gray-100 text-gray-800"
+                                  }`}
+                                >
+                                  {status === "available"
+                                    ? "Pending Processing"
+                                    : status === "ready_to_claim"
+                                    ? "Ready to Claim"
+                                    : "Other Status"}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {campus}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                April 28, 2025{" "}
+                                {/* Replace with dynamic date if available */}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button
+                                  onClick={() =>
+                                    handleCancelReservation(bookId, borrowedId)
+                                  }
+                                  className="text-red-600 hover:text-red-900"
+                                >
+                                  Cancel
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
                     ) : (
                       <tr>
                         <td

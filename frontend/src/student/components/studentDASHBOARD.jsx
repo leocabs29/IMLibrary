@@ -9,7 +9,7 @@ export default function StudentDASHBOARD() {
       <div className="w-full ">
         {/* Main content container */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          {/* Header with logo and notifications */}
+          {/* Header with logo and notifications */} 
           <div className="px-6 py-4 flex justify-between items-center border-b border-gray-200">
             <div className="flex items-center">
               <img 

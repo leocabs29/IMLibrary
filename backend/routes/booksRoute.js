@@ -674,60 +674,87 @@ router.post('/borrowed_book/:bookId', async (req, res) => {
 });
 
 
-router.delete('/cancel', async (req, res) => {
-  const { bookId } = req.body;
+// Cancel reservation route - fixed
+router.delete("/cancel", async (req, res) => {
+  const { bookId, borrowedId } = req.body;
+  console.log("Cancel request received:", { bookId, borrowedId });
 
-  console.log("Received request to cancel reservation with bookId:", bookId);
-
-  if (!bookId || typeof bookId !== 'number') {
-    return res.status(400).json({ message: 'Invalid or missing bookId' });
+  if (!bookId || !borrowedId) {
+    return res.status(400).json({
+      success: false,
+      error: "Both bookId and borrowedId are required",
+      received: req.body,
+    });
   }
 
   let connection;
   try {
-    connection = await getConnection(); // Assuming you have a connection pool
-    await connection.beginTransaction(); // Start transaction
+    connection = await db.getConnection();
+    console.log("Database connection established");
 
-    // 1. Delete from BORROWED_BOOKS
+    // 1. Delete the reservation
     const deleteResult = await connection.execute(
-      `DELETE FROM BORROWED_BOOKS WHERE BOOK_ID = :bookId`,
-      [bookId],
-      { autoCommit: false } // Disable autocommit for transaction
-    );
-
-    if (deleteResult.rowsAffected === 0) {
-      await connection.rollback();
-      return res.status(404).json({ message: 'No matching reservation found' });
-    }
-
-    // 2. Update status in BOOKS
-    await connection.execute(
-      `UPDATE BOOKS SET BOOK_STATUS = 8 WHERE BOOK_ID = :bookId`,
-      [bookId],
+      `DELETE FROM BORROWED_BOOKS 
+       WHERE BOOK_ID = :bookId AND BORROWED_ID = :borrowedId`,
+      { bookId, borrowedId },
       { autoCommit: false }
     );
 
-    await connection.commit(); // Commit both operations
-    res.status(200).json({ message: 'Reservation cancelled and book status updated.' });
+    console.log("Delete result:", deleteResult);
 
+    if (deleteResult.rowsAffected === 0) {
+      await connection.rollback();
+      return res.status(404).json({
+        success: false,
+        error: "No matching reservation found",
+      });
+    }
+
+    // 2. Update the book's status
+    await connection.execute(
+      `UPDATE BOOKS 
+       SET STATUS_ID = 8 
+       WHERE BOOK_ID = :bookId`,
+      { bookId },
+      { autoCommit: false }
+    );
+
+    await connection.commit();
+
+    res.status(200).json({
+      success: true,
+      message: "Reservation cancelled successfully",
+    });
   } catch (err) {
-    console.error("Error in cancellation process:", err);
-    if (connection) await connection.rollback(); // Rollback on error
-    res.status(500).json({ 
-      message: 'Failed to cancel reservation',
-      error: err.message 
+    console.error("Database Error:", {
+      message: err.message,
+      code: err.code,
+      stack: err.stack,
+    });
+
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackErr) {
+        console.error("Rollback failed:", rollbackErr);
+      }
+    }
+
+    res.status(500).json({
+      success: false,
+      error: "Database operation failed",
+      details: err.message,
     });
   } finally {
     if (connection) {
       try {
-        await connection.close(); // Release connection
-      } catch (err) {
-        console.error("Error closing connection:", err);
+        await connection.close();
+      } catch (closeErr) {
+        console.error("Connection close failed:", closeErr);
       }
     }
   }
 });
-
 
 
 
