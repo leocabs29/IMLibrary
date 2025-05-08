@@ -993,7 +993,7 @@ function StudentDashboard2() {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm text-yellow-700">
-                      You have 1 book ready for pickup at {activeCampus} Campus.
+                      You have a book ready for pickup at {activeCampus} Campus.
                       Please collect it by May 1, 2025.
                     </p>
                   </div>
@@ -1115,7 +1115,7 @@ function StudentDashboard2() {
                       How many books can I borrow at once?
                     </h3>
                     <p className="mt-2 text-sm text-gray-500">
-                      Students can borrow up to 10 books at a time across all
+                      Students can borrow up to 2 books at a time across all
                       campuses.
                     </p>
                   </div>
@@ -1124,8 +1124,8 @@ function StudentDashboard2() {
                       Can I return books to any campus?
                     </h3>
                     <p className="mt-2 text-sm text-gray-500">
-                      Yes, books can be returned to any campus library
-                      regardless of where they were borrowed from.
+                      No, books can only be returned to the campus library
+                      where they were borrowed from.
                     </p>
                   </div>
                   <div>
@@ -1143,8 +1143,8 @@ function StudentDashboard2() {
                       What are the late fees?
                     </h3>
                     <p className="mt-2 text-sm text-gray-500">
-                      Late fees are $0.25 per day per book, with a maximum of
-                      $10 per book.
+                      Late fees are 5pesos per day per book, with a maximum of
+                      P50 per book.
                     </p>
                   </div>
                   <div>
