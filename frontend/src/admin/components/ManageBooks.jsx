@@ -242,6 +242,7 @@ function ManageBooks() {
     { field: "author", label: "Author" },
     { field: "isbn", label: "ISBN" },
     { field: "category", label: "Category" },
+    { field: "campus", label: "Campus" },
     { field: "yearPublished", label: "Year" },
     { field: "copies", label: "Copies" },
     { field: "available", label: "Available" },
@@ -355,6 +356,9 @@ function ManageBooks() {
                   <td className="px-6 py-4 whitespace-nowrap">{book.isbn}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {book.category}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {book.branch}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {book.yearPublished}
