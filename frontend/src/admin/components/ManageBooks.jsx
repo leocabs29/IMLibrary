@@ -40,17 +40,19 @@ function ManageBooks() {
 
       // Transform the data to a more usable format
       const transformedData = data.map((book, index) => ({
-        id: index, // Using index as ID temporarily - ideally should come from backend
-        title: book[0],
-        author: book[1],
-        category: book[2],
-        isbn: book[3],
-        yearPublished: book[4],
-        copies: book[5],
-        available: book[6],
+        id: book[0]  , // Using index as ID temporarily - ideally should come from backend
+        title: book[1],
+        author: book[2],
+        category: book[3],
+        isbn: book[4],
+        yearPublished: book[5],
+        copies: book[6],
+        available: book[7],
+        branch: book[8]
       }));
 
       setBooks(transformedData);
+      console.log(transformedData)
       setError(null);
     } catch (err) {
       setError(`Error fetching books: ${err.message}`);
