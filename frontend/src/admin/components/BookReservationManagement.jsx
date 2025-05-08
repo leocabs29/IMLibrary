@@ -13,6 +13,51 @@ function BookReservationManagement() {
   const [bookId, setBookId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState({
+    visible: false,
+    message: "",
+    type: "success"
+  });
+
+  const showToast = (message, type = "success") => {
+    setToast({
+      visible: true,
+      message,
+      type
+    });
+    setTimeout(() => {
+      setToast({
+        ...toast,
+        visible: false
+      });
+    }, 3000);
+  };
+
+  const fetchReservations = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        "http://localhost:3000/books/book-reservation"
+      );
+      if (!response.ok) {
+        throw new Error(`An error occurred: ${response.status}`);
+      }
+      const data = await response.json();
+      setReservations(data);
+      console.log("Reservations refreshed:", data);
+      setError("");
+    } catch (err) {
+      setError(err.message);
+      showToast(`Error refreshing data: ${err.message}`, "error");
+      console.error("Error fetching reservations:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReservations();
+  }, []);
 
   const handleOpenModal = (reservation = null) => {
     if (reservation) {
@@ -39,29 +84,6 @@ function BookReservationManagement() {
     setIsModalOpen(true);
   };
 
-  useEffect(() => {
-    const fetchReservations = async () => {
-      try {
-        const response = await fetch(
-          "http://localhost:3000/books/book-reservation"
-        );
-        if (!response.ok) {
-          throw new Error(`An error occurred: ${response.status}`);
-        }
-        const data = await response.json();
-        setReservations(data); // Make sure data is formatted correctly
-        console.log("asdsad" + data);
-      } catch (err) {
-        setError(err.message);
-        console.error("Error fetching reservations:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchReservations();
-  }, []);
-
   const handleAccept = async (userId, bookId) => {
     console.log(
       `Attempting to accept reservation for User ID: ${userId}, Book ID: ${bookId}`
@@ -69,6 +91,7 @@ function BookReservationManagement() {
 
     if (!userId || !bookId) {
       setMessage("Missing user ID or book ID.");
+      showToast("Missing user ID or book ID.", "error");
       return;
     }
 
@@ -81,8 +104,8 @@ function BookReservationManagement() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            userId, // Sending userId as a parameter
-            bookId, // Sending bookId as a parameter
+            userId,
+            bookId,
           }),
         }
       );
@@ -94,20 +117,26 @@ function BookReservationManagement() {
       const data = await response.json();
       console.log("Reservation accepted:", data);
       setMessage(data.message || "Reservation accepted");
+      showToast(data.message || "Reservation accepted successfully");
+      
+      // Refresh the reservations list after action
+      fetchReservations();
     } catch (error) {
       console.error("Error:", error);
       setMessage(error.message || "Something went wrong.");
+      showToast(error.message || "Something went wrong.", "error");
     }
   };
 
   
   const handleClaim = async (userId, bookId) => {
     console.log(
-      `Attempting to accept reservation for User ID: ${userId}, Book ID: ${bookId}`
+      `Attempting to claim reservation for User ID: ${userId}, Book ID: ${bookId}`
     );
 
     if (!userId || !bookId) {
       setMessage("Missing user ID or book ID.");
+      showToast("Missing user ID or book ID.", "error");
       return;
     }
 
@@ -120,22 +149,71 @@ function BookReservationManagement() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            userId, // Sending userId as a parameter
-            bookId, // Sending bookId as a parameter
+            userId,
+            bookId,
           }),
         }
       );
 
       if (!response.ok) {
-        throw new Error("Failed to accept reservation");
+        throw new Error("Failed to claim reservation");
       }
 
       const data = await response.json();
-      console.log("Reservation accepted:", data);
+      console.log("Book claimed:", data);
       setMessage(data.message || "Reservation accepted");
+      showToast(data.message || "Book claimed successfully");
+      
+      // Refresh the reservations list after action
+      fetchReservations();
     } catch (error) {
       console.error("Error:", error);
       setMessage(error.message || "Something went wrong.");
+      showToast(error.message || "Something went wrong.", "error");
+    }
+  };
+
+  const handleReturn = async (userId, bookId) => {
+    console.log(
+      `Attempting to return book for User ID: ${userId}, Book ID: ${bookId}`
+    );
+
+    if (!userId || !bookId) {
+      setMessage("Missing user ID or book ID.");
+      showToast("Missing user ID or book ID.", "error");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "http://localhost:3000/books/reservations/return",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId,
+            bookId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to return book");
+      }
+
+      const data = await response.json();
+      console.log("Book returned:", data);
+      setMessage(data.message || "Book returned successfully");
+      showToast(data.message || "Book returned successfully");
+      
+      // Refresh the reservations list after action
+      fetchReservations();
+    } catch (error) {
+      console.error("Error:", error);
+      setMessage(error.message || "Something went wrong.");
+      showToast(error.message || "Something went wrong.", "error");
     }
   };
 
@@ -225,6 +303,14 @@ function BookReservationManagement() {
         return "bg-blue-100 text-blue-800";
       case "cancelled":
         return "bg-gray-100 text-gray-800";
+      case "borrowed":
+        return "bg-blue-100 text-blue-800";
+      case "pending_processing":
+      case "available":
+        return "bg-yellow-100 text-yellow-800";
+      case "ready_to_claim":
+      case "accepted":
+        return "bg-indigo-100 text-indigo-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -255,6 +341,34 @@ function BookReservationManagement() {
 
   return (
     <div className="bg-white rounded-lg shadow">
+      {toast.visible && (
+        <div 
+          className={`fixed top-4 right-4 z-50 px-4 py-2 rounded shadow-lg ${
+            toast.type === 'success' ? 'bg-green-500 text-white' : 
+            toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-yellow-500 text-white'
+          }`}
+        >
+          <div className="flex items-center">
+            {toast.type === 'success' && (
+              <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+            )}
+            {toast.type === 'error' && (
+              <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            )}
+            {toast.type === 'warning' && (
+              <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+            )}
+            <span>{toast.message}</span>
+          </div>
+        </div>
+      )}
+
       <div className="p-6 border-b border-gray-200">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
           <h2 className="text-xl font-semibold text-gray-800 mb-4 md:mb-0">
@@ -447,7 +561,7 @@ function BookReservationManagement() {
                       reservation[8] === "borrowed") && (
                       <button
                         onClick={() =>
-                          handleUpdateStatus(reservation.id, "returned")
+                          handleReturn(reservation[4], reservation[1])
                         }
                         className="text-green-600 hover:text-green-900 mr-3"
                       >

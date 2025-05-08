@@ -584,39 +584,32 @@ router.put("/reservations/return", async (req, res) => {
   try {
     connection = await db.getConnection();
 
-    // Calculate dates
-    const today = new Date();
-    const borrowDate = today.toISOString().slice(0, 10); // YYYY-MM-DD
-    const dueDate = new Date(today.setDate(today.getDate() + 7)).toISOString().slice(0, 10);
-
     // Start transaction
     await connection.execute("BEGIN NULL; END;");
 
-    // 1. Update the STATUS_ID in the BOOKS table to 4 (Accepted)
+    // 1. Update the STATUS_ID in the BOOKS table to 1 (Available)
     const updateBooksQuery = `
       UPDATE BOOKS
-      SET STATUS_ID = 8
+      SET STATUS_ID = 1
       WHERE BOOK_ID = :bookId
     `;
     await connection.execute(updateBooksQuery, { bookId });
 
-    // 2. Insert BORROW_DATE and DUE_DATE into BORROWED_BOOKS table
-    const updateBorrowedBooksQuery = `
-      UPDATE BORROWED_BOOKS
-      SET BORROW_DATE = NULL,
-          DUE_DATE = NULL
+    // 2. Remove from BORROWED_BOOKS table
+    const deleteBorrowedBookQuery = `
+      DELETE FROM BORROWED_BOOKS
       WHERE BOOK_ID = :bookId AND USER_ID = :userId
     `;
-    await connection.execute(updateBorrowedBooksQuery, { bookId, userId, borrowDate, dueDate });
+    await connection.execute(deleteBorrowedBookQuery, { bookId, userId });
 
     // Commit the transaction
     await connection.commit();
 
-    res.status(200).json({ message: "Reservation accepted with borrow and due date set." });
+    res.status(200).json({ message: "Book returned successfully. Status set to available." });
   } catch (err) {
     if (connection) await connection.rollback();
-    console.error("Error processing reservation:", err);
-    res.status(500).json({ error: "Failed to accept reservation", details: err.message });
+    console.error("Error processing book return:", err);
+    res.status(500).json({ error: "Failed to return book", details: err.message });
   } finally {
     if (connection) {
       await connection.close();
