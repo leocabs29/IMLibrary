@@ -99,14 +99,13 @@ function Signup({ onBackToHome }) {
     setSignupError("");
     
     try {
-      const response = await fetch("http://localhost:3000/users/register", {
+      const response = await fetch("http://localhost:3000/users/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          first_name: formData.firstName,
-          last_name: formData.lastName,
+          full_name: `${formData.firstName} ${formData.lastName}`,
           email: formData.email,
           password: formData.password,
           mpin: formData.mpin
@@ -117,7 +116,7 @@ function Signup({ onBackToHome }) {
 
       if (response.ok) {
         alert("Account created successfully! Please log in.");
-        navigate("/login"); // Or use onBackToHome to return to homepage
+        navigate("/student-dashboard2"); // Or use onBackToHome to return to homepage
       } else {
         setSignupError(data.error || "Registration failed. Please try again.");
       }

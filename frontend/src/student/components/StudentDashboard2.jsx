@@ -68,6 +68,7 @@ function StudentDashboard2() {
     { field: "available", label: "Available" },
     { field: "actions", label: "Actions" },
   ];
+  
   const fetchUserById = async () => {
     setLoading(true);
     try {
@@ -85,15 +86,18 @@ function StudentDashboard2() {
 
       // Transform the single user data
       const transformedData = {
-        id: user[0],
-        name: user[1],
-        email: user[2],
-        role: user[3],
-        status: user[4],
-        joinDate: user[5],
+        id: user.user_id,
+        name: user.full_name,
+        email: user.email,
+        role: user.role_name,
+        status: user.userstatus_name,
+        joinDate: user.created_at,
       };
+      
 
-      setUsers([transformedData]); // put inside an array because setUsers expects an array
+      setUsers([transformedData]);
+      console.log(user) 
+      // put inside an array because setUsers expects an array
       setError(null);
     } catch (err) {
       setError(`Error fetching user: ${err.message}`);
@@ -158,7 +162,8 @@ function StudentDashboard2() {
       if (data.message) {
         setError(data.message);
       } else {
-        setBorrowedBooks(data); // Assuming the response contains the borrowed books in an array
+        setBorrowedBooks(data);
+        // Assuming the response contains the borrowed books in an array
       }
 
       setError(null);
@@ -192,7 +197,6 @@ function StudentDashboard2() {
       }
       const data = await response.json();
       setReservations(data.reservations); // Update the state with the array of reservations
-      console.log("Reservation ID:", JSON.stringify(data.reservations));
       setLoading(false);
     } catch (err) {
       setError(`Error fetching reservations: ${err.message}`);
@@ -219,7 +223,8 @@ function StudentDashboard2() {
       const data = await response.json();
 
       if (response.ok) {
-        alert(data.message || "Book borrow request submitted.");
+       toast.success(data.message || "Book borrow request submitted.");
+       fetchReservations()
         // Optionally, update UI, e.g., refresh the book list
       } else {
         alert(data.error || "Failed to submit borrow request.");
@@ -233,7 +238,7 @@ function StudentDashboard2() {
   const handleCancelReservation = async (bookId, borrowedId) => {
     try {
       setLoading(true);
-      console.log("Attempting to cancel reservation:", { bookId, borrowedId });
+      toast.success("Reservation cancelled successfully!");
 
       const response = await fetch("http://localhost:3000/books/cancel", {
         method: "DELETE",
@@ -260,7 +265,7 @@ function StudentDashboard2() {
         )
       );
 
-      toast.success(result.message || "Reservation cancelled successfully!");
+      toast.success("Reservation cancelled successfully!");
     } catch (error) {
     } finally {
       setLoading(false);
@@ -268,11 +273,16 @@ function StudentDashboard2() {
   };
 
   useEffect(() => {
-    fetchUserById();
-    fetchBorrowedBooksCount();
-    fetchBorrowedBooks();
-    fetchBooks();
-    fetchReservations();
+    const timeout = setTimeout(() => {
+      fetchUserById();
+      fetchBorrowedBooksCount();
+      fetchBorrowedBooks();
+      fetchBooks();
+      fetchReservations();
+    }, 300); // delay for 3 seconds
+  
+    // Optional cleanup
+    return () => clearTimeout(timeout) ;
   }, []);
 
   // Menu items for student dashboard
@@ -386,8 +396,8 @@ function StudentDashboard2() {
               S
             </div>
             <div>
-              <p className="text-sm font-medium">{users[0]?.name}</p>
-              <p className="text-xs text-slate-400">{users[0]?.email}</p>
+            <p className="text-sm font-medium">{users[0]?.name}</p>
+            <p className="text-xs text-slate-400">{users[0]?.email}</p>
             </div>
           </div>
         </div>
